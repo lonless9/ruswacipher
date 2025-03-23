@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Build Release
+        run: cargo build --release
+      
+      - name: Create Release Assets
+        run: |
+          mkdir -p release
+          cp target/release/ruswacipher release/
+          cp -r examples release/
+          tar -czf ruswacipher-linux.tar.gz -C release .
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ruswacipher-linux.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  build-cross-platform:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: ruswacipher.exe
+            asset_name: ruswacipher-windows.zip
+          - os: macos-latest
+            artifact_name: ruswacipher
+            asset_name: ruswacipher-macos.tar.gz
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Build Release
+        run: cargo build --release
+      
+      - name: Create Release Assets (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          mkdir -p release
+          cp target/release/${{ matrix.artifact_name }} release/
+          cp -r examples release/
+          Compress-Archive -Path release/* -DestinationPath ${{ matrix.asset_name }}
+        shell: pwsh
+      
+      - name: Create Release Assets (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p release
+          cp target/release/${{ matrix.artifact_name }} release/
+          cp -r examples release/
+          tar -czf ${{ matrix.asset_name }} -C release .
+      
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

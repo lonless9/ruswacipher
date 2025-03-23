@@ -1,33 +1,33 @@
 #!/bin/bash
 
-# 使用wat2wasm编译WAT文件到WASM
-echo "编译WAT文件到WASM..."
+# Compile WAT files to WASM using wat2wasm
+echo "Compiling WAT files to WASM..."
 wat2wasm wat_files/advanced.wat -o advanced.wasm
 
-# 确保输出文件存在
+# Ensure output file exists
 if [ ! -f "advanced.wasm" ]; then
-    echo "错误: WASM编译失败!"
+    echo "Error: WASM compilation failed!"
     exit 1
 fi
 
-# 使用ruswacipher加密WASM文件
-echo "加密WASM模块..."
+# Encrypt WASM file using ruswacipher
+echo "Encrypting WASM module..."
 cd ../../
 cargo run -- encrypt -i examples/advanced_app/advanced.wasm -o examples/advanced_app/advanced.encrypted.wasm -a aes-gcm
 
-# 确保密钥文件存在，并重命名为一致的名称
+# Ensure key file exists and rename for consistency
 if [ -f "examples/advanced_app/advanced.encrypted.wasm.key" ]; then
     mv examples/advanced_app/advanced.encrypted.wasm.key examples/advanced_app/advanced.wasm.key
 fi
 
-# 生成运行时和加载器
-echo "生成Web文件..."
+# Generate runtime and loader
+echo "Generating Web files..."
 cargo run -- generate-web -o examples/advanced_app/web -a aes-gcm
 
-# 创建密钥的清单文件
+# Create metadata file for the key
 echo "{\"keyAlgorithm\":\"aes-gcm\",\"keyType\":\"symmetric\",\"created\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"}" > examples/advanced_app/advanced.wasm.key.meta
 
-echo "构建完成!"
-echo "密钥已保存至 examples/advanced_app/advanced.wasm.key"
-echo "加密的WASM文件位于 examples/advanced_app/advanced.encrypted.wasm"
-echo "启动HTTP服务器并访问 examples/advanced_app/index.html 测试示例!" 
+echo "Build complete!"
+echo "Key saved to examples/advanced_app/advanced.wasm.key"
+echo "Encrypted WASM file is at examples/advanced_app/advanced.encrypted.wasm"
+echo "Start an HTTP server and access examples/advanced_app/index.html to test the example!" 

@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Check formatting
+        run: cargo fmt -- --check
+        
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+        
+      - name: Build
+        run: cargo build --verbose
+        
+      - name: Run tests
+        run: cargo test --verbose
+        
+  wasm-test:
+    name: WebAssembly Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Build WASM
+        run: cargo build --target wasm32-unknown-unknown 

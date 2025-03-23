@@ -2,7 +2,7 @@
 name = "ruswacipher"
 version = "0.1.0"
 edition = "2021"
-authors = ["RusWaCipher Team"]
+authors = ["lonless9"]
 description = "A Rust tool for encrypting and protecting WebAssembly modules"
 readme = "README.md"
 license = "MIT"
