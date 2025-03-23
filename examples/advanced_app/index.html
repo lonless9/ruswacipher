@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RusWaCipher Advanced Example</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        #app-loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: -1px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+        .tab-content {
+            display: none;
+            border: 1px solid #ddd;
+            padding: 20px;
+            background-color: #fff;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        input, textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .result-box {
+            background-color: #f8f8f8;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RusWaCipher Advanced Example</h1>
+    <div class="info-box">
+        <p>这个高级示例展示了RusWaCipher如何用于保护和运行更复杂的WebAssembly模块。它使用了ChaCha20-Poly1305加密和二级混淆。</p>
+    </div>
+    
+    <div id="app-loading">Loading application...</div>
+    
+    <div id="app-content" style="display: none;">
+        <div class="tabs">
+            <div class="tab active" data-tab="calculator">计算器</div>
+            <div class="tab" data-tab="password">密码强度检测器</div>
+            <div class="tab" data-tab="encryption">文本加解密</div>
+            <div class="tab" data-tab="json">JSON验证器</div>
+        </div>
+        
+        <div class="tab-content active" id="calculator-tab">
+            <h2>高级计算器</h2>
+            <div class="container">
+                <div class="input-group">
+                    <label for="num1">第一个数字:</label>
+                    <input type="number" id="calc-num1" value="10">
+                </div>
+                <div class="input-group">
+                    <label for="num2">第二个数字:</label>
+                    <input type="number" id="calc-num2" value="5">
+                </div>
+                <div>
+                    <button id="btn-add">加法</button>
+                    <button id="btn-subtract">减法</button>
+                    <button id="btn-multiply">乘法</button>
+                    <button id="btn-divide">除法</button>
+                </div>
+                <div class="result-box" id="calc-result">结果将显示在这里</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="password-tab">
+            <h2>密码强度检测器</h2>
+            <div class="container">
+                <div class="input-group">
+                    <label for="password">输入密码:</label>
+                    <input type="password" id="password" placeholder="输入密码检测强度">
+                </div>
+                <button id="btn-check-password">检测强度</button>
+                <div class="result-box" id="password-result">密码强度将显示在这里</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="encryption-tab">
+            <h2>文本加解密</h2>
+            <div class="container">
+                <div class="input-group">
+                    <label for="plain-text">明文:</label>
+                    <textarea id="plain-text" rows="4" placeholder="输入要加密的文本"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="encryption-key">加密密钥:</label>
+                    <input type="text" id="encryption-key" placeholder="输入加密密钥">
+                </div>
+                <div>
+                    <button id="btn-encrypt">加密</button>
+                    <button id="btn-decrypt">解密</button>
+                </div>
+                <div class="result-box" id="encryption-result">加解密结果将显示在这里</div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="json-tab">
+            <h2>JSON验证器</h2>
+            <div class="container">
+                <div class="input-group">
+                    <label for="json-input">JSON文本:</label>
+                    <textarea id="json-input" rows="6" placeholder='输入JSON，例如: {"name": "test", "value": 123}'></textarea>
+                </div>
+                <button id="btn-validate-json">验证</button>
+                <div class="result-box" id="json-result">验证结果将显示在这里</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Advanced example application initialized');
+            
+            // 选项卡功能
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 移除所有活动标签
+                    tabs.forEach(t => t.classList.remove('active'));
+                    // 隐藏所有内容
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // 激活当前标签
+                    tab.classList.add('active');
+                    // 显示相应内容
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // 加载WASM模块
+            let wasmInstance = null;
+            let stringPtrs = []; // 用于跟踪已分配的字符串指针
+            
+            // 函数：加载密钥
+            async function loadKey() {
+                try {
+                    const response = await fetch('advanced.wasm.key');
+                    const keyData = await response.text();
+                    return keyData.trim();
+                } catch (error) {
+                    console.error('Error loading key:', error);
+                    return null;
+                }
+            }
+            
+            // 函数：初始化WASM
+            async function initWasm() {
+                return new Promise((resolve, reject) => {
+                    try {
+                        document.getElementById('app-loading').textContent = '正在加载加密的WASM模块...';
+                        
+                        loadKey().then(key => {
+                            if (!key) {
+                                document.getElementById('app-loading').textContent = '加载密钥失败，请检查控制台获取详细信息。';
+                                reject(new Error('Failed to load key'));
+                                return;
+                            }
+                            
+                            const scriptLoader = document.createElement('script');
+                            scriptLoader.src = 'loader.js';
+                            scriptLoader.onload = async () => {
+                                try {
+                                    const loader = new WasmLoader();
+                                    wasmInstance = await loader.load('advanced.encrypted.wasm', key);
+                                    
+                                    // 成功加载，显示应用内容
+                                    document.getElementById('app-loading').style.display = 'none';
+                                    document.getElementById('app-content').style.display = 'block';
+                                    
+                                    // 返回成功
+                                    resolve(wasmInstance);
+                                } catch (error) {
+                                    console.error('Error initializing WASM:', error);
+                                    document.getElementById('app-loading').textContent = 
+                                        '初始化WASM模块失败，请检查控制台获取详细信息。';
+                                    reject(error);
+                                }
+                            };
+                            
+                            scriptLoader.onerror = (err) => {
+                                document.getElementById('app-loading').textContent = 
+                                    '加载loader.js失败，请确保文件存在。';
+                                reject(err);
+                            };
+                            
+                            document.head.appendChild(scriptLoader);
+                        }).catch(error => {
+                            console.error('Error loading key:', error);
+                            reject(error);
+                        });
+                    } catch (error) {
+                        console.error('Error in initWasm:', error);
+                        document.getElementById('app-loading').textContent = 
+                            '加载过程中发生错误，请检查控制台获取详细信息。';
+                        reject(error);
+                    }
+                });
+            }
+            
+            // 函数：字符串清理
+            function cleanupStrings() {
+                if (!wasmInstance) return;
+                
+                // 释放所有已分配的字符串
+                stringPtrs.forEach(ptr => {
+                    if (ptr) wasmInstance.exports.deallocate(ptr, 0);
+                });
+                stringPtrs = [];
+            }
+            
+            // 函数：设置计算器功能
+            function setupCalculator() {
+                const calcResult = document.getElementById('calc-result');
+                
+                // 加法
+                document.getElementById('btn-add').addEventListener('click', () => {
+                    const num1 = parseInt(document.getElementById('calc-num1').value) || 0;
+                    const num2 = parseInt(document.getElementById('calc-num2').value) || 0;
+                    
+                    const result = wasmInstance.exports.add(num1, num2);
+                    calcResult.textContent = `${num1} + ${num2} = ${result}`;
+                });
+                
+                // 减法
+                document.getElementById('btn-subtract').addEventListener('click', () => {
+                    const num1 = parseInt(document.getElementById('calc-num1').value) || 0;
+                    const num2 = parseInt(document.getElementById('calc-num2').value) || 0;
+                    
+                    // 直接使用subtract函数
+                    const result = wasmInstance.exports.subtract(num1, num2);
+                    calcResult.textContent = `${num1} - ${num2} = ${result}`;
+                });
+                
+                // 乘法
+                document.getElementById('btn-multiply').addEventListener('click', () => {
+                    const num1 = parseInt(document.getElementById('calc-num1').value) || 0;
+                    const num2 = parseInt(document.getElementById('calc-num2').value) || 0;
+                    
+                    // 直接使用multiply函数
+                    const result = wasmInstance.exports.multiply(num1, num2);
+                    calcResult.textContent = `${num1} × ${num2} = ${result}`;
+                });
+                
+                // 除法
+                document.getElementById('btn-divide').addEventListener('click', () => {
+                    const num1 = parseInt(document.getElementById('calc-num1').value) || 0;
+                    const num2 = parseInt(document.getElementById('calc-num2').value) || 0;
+                    
+                    if (num2 === 0) {
+                        calcResult.textContent = '错误：除数不能为零';
+                        return;
+                    }
+                    
+                    // 直接使用divide函数
+                    const result = wasmInstance.exports.divide(num1, num2);
+                    calcResult.textContent = `${num1} ÷ ${num2} = ${result}`;
+                });
+            }
+            
+            // 函数：设置密码强度检测器功能
+            function setupPasswordChecker() {
+                const passwordResult = document.getElementById('password-result');
+                const passwordInput = document.getElementById('password');
+                
+                document.getElementById('btn-check-password').addEventListener('click', () => {
+                    if (!wasmInstance) {
+                        passwordResult.textContent = 'WASM模块未加载';
+                        return;
+                    }
+                    
+                    const password = passwordInput.value;
+                    if (!password) {
+                        passwordResult.textContent = '请输入密码';
+                        return;
+                    }
+                    
+                    // 将JavaScript字符串转换为C字符串
+                    const encoder = new TextEncoder();
+                    const passwordBuffer = encoder.encode(password + '\0');  // 添加null终止符
+                    
+                    // 在WASM内存中分配空间
+                    const passwordAlloc = wasmInstance.exports.allocate(passwordBuffer.length);
+                    
+                    // 写入WASM内存
+                    const memory = wasmInstance.exports.memory;
+                    const passwordArray = new Uint8Array(memory.buffer, passwordAlloc, passwordBuffer.length);
+                    passwordArray.set(passwordBuffer);
+                    
+                    // 调用WASM函数
+                    const strengthScore = wasmInstance.exports.check_password_strength(passwordAlloc);
+                    
+                    // 释放内存
+                    wasmInstance.exports.deallocate(passwordAlloc, passwordBuffer.length);
+                    
+                    // 显示结果
+                    let strengthText = '';
+                    let strengthColor = '';
+                    
+                    switch (strengthScore) {
+                        case 0:
+                            strengthText = '非常弱 - 太容易被破解';
+                            strengthColor = '#ff4d4d';
+                            break;
+                        case 1:
+                        case 2:
+                            strengthText = '弱 - 需要更多不同类型的字符';
+                            strengthColor = '#ffaa00';
+                            break;
+                        case 3:
+                        case 4:
+                            strengthText = '中等 - 安全性一般';
+                            strengthColor = '#ffff00';
+                            break;
+                        case 5:
+                        case 6:
+                            strengthText = '强 - 有良好的安全性';
+                            strengthColor = '#aaff00';
+                            break;
+                        case 7:
+                        case 8:
+                            strengthText = '非常强 - 极难破解';
+                            strengthColor = '#00dd00';
+                            break;
+                        default:
+                            strengthText = '未知强度';
+                            strengthColor = '#aaaaaa';
+                    }
+                    
+                    passwordResult.innerHTML = `<div style="color: ${strengthColor}; font-weight: bold;">${strengthText}</div>`;
+                    passwordResult.innerHTML += `<div>分数: ${strengthScore}/8</div>`;
+                    
+                    // 添加一些密码改进建议
+                    const suggestions = [];
+                    if (password.length < 8) suggestions.push("增加密码长度到至少8个字符");
+                    if (password.length < 12) suggestions.push("考虑使用12个或更多字符获得更高安全性");
+                    if (!/[a-z]/.test(password)) suggestions.push("添加小写字母");
+                    if (!/[A-Z]/.test(password)) suggestions.push("添加大写字母");
+                    if (!/[0-9]/.test(password)) suggestions.push("添加数字");
+                    if (!/[^a-zA-Z0-9]/.test(password)) suggestions.push("添加特殊字符（如!@#$%等）");
+                    
+                    if (suggestions.length > 0) {
+                        passwordResult.innerHTML += `<div style="margin-top: 10px;"><strong>改进建议:</strong></div>`;
+                        passwordResult.innerHTML += `<ul style="margin-top: 5px;">`;
+                        suggestions.forEach(suggestion => {
+                            passwordResult.innerHTML += `<li>${suggestion}</li>`;
+                        });
+                        passwordResult.innerHTML += `</ul>`;
+                    }
+                });
+                
+                // 添加按键事件，按Enter键触发检查
+                passwordInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        document.getElementById('btn-check-password').click();
+                    }
+                });
+            }
+            
+            // 函数：设置文本加解密功能
+            function setupTextEncryption() {
+                const encryptionResult = document.getElementById('encryption-result');
+                const plainTextInput = document.getElementById('plain-text');
+                const keyInput = document.getElementById('encryption-key');
+                let encryptedText = '';
+                
+                // 字符串转换为WASM内的C字符串，并返回指针
+                function stringToWasm(str) {
+                    if (!str) return 0;
+                    
+                    try {
+                        const encoder = new TextEncoder();
+                        const buffer = encoder.encode(str + '\0');
+                        
+                        const ptr = wasmInstance.exports.allocate(buffer.length);
+                        if (!ptr) throw new Error('内存分配失败');
+                        
+                        const memory = wasmInstance.exports.memory;
+                        const array = new Uint8Array(memory.buffer, ptr, buffer.length);
+                        array.set(buffer);
+                        
+                        return ptr;
+                    } catch (error) {
+                        console.error('字符串转换到WASM失败:', error);
+                        return 0;
+                    }
+                }
+                
+                // 从WASM内存读取C字符串
+                function wasmToString(ptr) {
+                    if (!ptr) return '';
+                    
+                    try {
+                        const memory = wasmInstance.exports.memory;
+                        const memoryArray = new Uint8Array(memory.buffer);
+                        
+                        // 找到字符串结束的位置
+                        let end = ptr;
+                        while (end < memoryArray.length && memoryArray[end] !== 0) end++;
+                        
+                        if (end === ptr) return ''; // 空字符串
+                        
+                        // 转换为JavaScript字符串
+                        const stringBuffer = memoryArray.slice(ptr, end);
+                        const decoder = new TextDecoder('utf-8', {fatal: false});
+                        const result = decoder.decode(stringBuffer);
+                        
+                        return result;
+                    } catch (error) {
+                        console.error('从WASM读取字符串失败:', error);
+                        return '';
+                    }
+                }
+                
+                // 使用Base64编码处理可能包含特殊字符的字符串
+                function encodeBase64(str) {
+                    try {
+                        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+                            return String.fromCharCode('0x' + p1);
+                        }));
+                    } catch (error) {
+                        console.error('Base64编码失败:', error);
+                        return '';
+                    }
+                }
+                
+                // 解码Base64字符串
+                function decodeBase64(str) {
+                    try {
+                        // 先尝试标准Base64解码
+                        const binary = atob(str);
+                        
+                        // 构建一个字节数组
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) {
+                            bytes[i] = binary.charCodeAt(i);
+                        }
+                        
+                        // 尝试使用TextDecoder解码（更健壮的UTF-8解码方式）
+                        try {
+                            // 使用TextDecoder处理UTF-8
+                            const decoder = new TextDecoder('utf-8', {fatal: false});
+                            return decoder.decode(bytes);
+                        } catch (e) {
+                            // 如果TextDecoder失败，回退到逐字符解码
+                            let result = '';
+                            for (let i = 0; i < binary.length; i++) {
+                                // 简单地转换为ASCII，忽略高位字节
+                                result += String.fromCharCode(binary.charCodeAt(i) & 0xFF);
+                            }
+                            return result;
+                        }
+                    } catch (error) {
+                        console.error('Base64解码失败:', error);
+                        return str; // 解码失败时返回原始字符串
+                    }
+                }
+                
+                // 检查字符串是否为有效的Base64
+                function isValidBase64(str) {
+                    if (!str || typeof str !== 'string') {
+                        return false;
+                    }
+                    
+                    // Base64字符串长度必须是4的倍数（可能有填充）
+                    if (str.length % 4 !== 0) {
+                        return false;
+                    }
+                    
+                    // 检查是否只包含有效的Base64字符
+                    if (!/^[A-Za-z0-9+/=]+$/.test(str)) {
+                        return false;
+                    }
+                    
+                    try {
+                        // 尝试解码，看是否会抛出异常
+                        atob(str);
+                        return true;
+                    } catch (error) {
+                        return false;
+                    }
+                }
+                
+                // 加密按钮事件
+                document.getElementById('btn-encrypt').addEventListener('click', () => {
+                    if (!wasmInstance) {
+                        encryptionResult.textContent = 'WASM模块未加载';
+                        return;
+                    }
+                    
+                    const plainText = plainTextInput.value;
+                    const key = keyInput.value;
+                    
+                    if (!plainText) {
+                        encryptionResult.textContent = '请输入要加密的文本';
+                        return;
+                    }
+                    
+                    if (!key) {
+                        encryptionResult.textContent = '请输入加密密钥';
+                        return;
+                    }
+                    
+                    try {
+                        // 清理之前分配的任何字符串
+                        cleanupStrings();
+                        
+                        // 将文本和密钥Base64编码，以处理Unicode字符
+                        const encodedText = encodeBase64(plainText);
+                        const encodedKey = encodeBase64(key);
+                        
+                        // 将编码后的文本和密钥转换为WASM字符串
+                        const textPtr = stringToWasm(encodedText);
+                        const keyPtr = stringToWasm(encodedKey);
+                        
+                        if (!textPtr || !keyPtr) {
+                            throw new Error('内存分配失败');
+                        }
+                        
+                        // 调用WASM加密函数
+                        const resultPtr = wasmInstance.exports.encrypt_string(textPtr, keyPtr);
+                        
+                        if (!resultPtr) {
+                            throw new Error('加密过程失败');
+                        }
+                        
+                        // 将结果保存到全局变量中
+                        encryptedText = wasmToString(resultPtr);
+                        
+                        // 跟踪已分配的字符串指针，以便后续释放
+                        stringPtrs.push(resultPtr);
+                        
+                        // 释放输入字符串
+                        wasmInstance.exports.deallocate(textPtr, encodedText.length + 1);
+                        wasmInstance.exports.deallocate(keyPtr, encodedKey.length + 1);
+                        
+                        // 显示结果
+                        encryptionResult.innerHTML = '<strong>加密结果:</strong><br>';
+                        encryptionResult.innerHTML += `<div style="word-break: break-all; margin-top: 10px;">${encryptedText}</div>`;
+                        encryptionResult.innerHTML += '<div style="margin-top: 15px;"><small>提示: 点击"解密"按钮测试解密过程</small></div>';
+                    } catch (error) {
+                        console.error('加密过程中发生错误:', error);
+                        encryptionResult.textContent = `加密失败: ${error.message}`;
+                    }
+                });
+                
+                // 解密按钮事件
+                document.getElementById('btn-decrypt').addEventListener('click', () => {
+                    if (!wasmInstance) {
+                        encryptionResult.textContent = 'WASM模块未加载';
+                        return;
+                    }
+                    
+                    const key = keyInput.value;
+                    
+                    // 如果没有先前的加密结果，尝试使用文本框中的内容作为加密文本
+                    let textToDecrypt = encryptedText;
+                    if (!textToDecrypt) {
+                        textToDecrypt = plainTextInput.value;
+                    }
+                    
+                    if (!textToDecrypt) {
+                        encryptionResult.textContent = '没有加密文本可以解密';
+                        return;
+                    }
+                    
+                    if (!key) {
+                        encryptionResult.textContent = '请输入解密密钥';
+                        return;
+                    }
+                    
+                    try {
+                        // 清理之前分配的任何字符串
+                        cleanupStrings();
+                        
+                        // 将密钥编码为Base64（同加密过程一致）
+                        const encodedKey = encodeBase64(key);
+                        
+                        // 确保加密文本是有效的字符串
+                        const safeTextToDecrypt = String(textToDecrypt).trim();
+                        
+                        // 将文本和密钥转换为WASM字符串
+                        const textPtr = stringToWasm(safeTextToDecrypt);
+                        const keyPtr = stringToWasm(encodedKey);
+                        
+                        if (!textPtr || !keyPtr) {
+                            throw new Error('内存分配失败');
+                        }
+                        
+                        // 调用WASM解密函数
+                        const resultPtr = wasmInstance.exports.decrypt_string(textPtr, keyPtr);
+                        
+                        if (!resultPtr) {
+                            throw new Error('解密过程失败');
+                        }
+                        
+                        // 获取解密结果
+                        const encryptedResult = wasmToString(resultPtr);
+                        
+                        // 首先尝试直接判断结果是否为有效的Base64
+                        let decryptedText = '';
+                        let isBase64 = false;
+                        
+                        try {
+                            // 检查是否是有效的Base64（长度是4的倍数，只包含有效的Base64字符）
+                            isBase64 = /^[A-Za-z0-9+/=]+$/.test(encryptedResult) && 
+                                      encryptedResult.length % 4 === 0;
+                                      
+                            if (isBase64) {
+                                // 尝试Base64解码
+                                decryptedText = decodeBase64(encryptedResult);
+                                
+                                // 如果解码后的字符串全是不可打印字符，可能解码错误
+                                const isPrintable = /[\x20-\x7E\u4E00-\u9FFF]/.test(decryptedText);
+                                if (!isPrintable) {
+                                    // 回退到原始结果
+                                    decryptedText = encryptedResult;
+                                }
+                            } else {
+                                // 不是Base64，使用原始结果
+                                decryptedText = encryptedResult;
+                            }
+                        } catch (e) {
+                            // 出现异常时使用原始结果
+                            console.error('解码过程中出现异常:', e);
+                            decryptedText = encryptedResult;
+                        }
+                        
+                        // 跟踪已分配的字符串指针，以便后续释放
+                        stringPtrs.push(resultPtr);
+                        
+                        // 释放输入字符串
+                        wasmInstance.exports.deallocate(textPtr, safeTextToDecrypt.length + 1);
+                        wasmInstance.exports.deallocate(keyPtr, encodedKey.length + 1);
+                        
+                        // 显示结果
+                        encryptionResult.innerHTML = '<strong>解密结果:</strong><br>';
+                        encryptionResult.innerHTML += `<div style="word-break: break-all; margin-top: 10px;">${decryptedText}</div>`;
+                        
+                        // 如果是Base64解码的结果，显示额外信息
+                        if (isBase64) {
+                            encryptionResult.innerHTML += `<div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                                <small>Base64解码成功</small>
+                            </div>`;
+                        }
+                    } catch (error) {
+                        console.error('解密过程中发生错误:', error);
+                        encryptionResult.textContent = `解密失败: ${error.message}`;
+                    }
+                });
+            }
+            
+            // 函数：设置JSON验证器功能
+            function setupJsonValidator() {
+                const jsonResult = document.getElementById('json-result');
+                const jsonInput = document.getElementById('json-input');
+                
+                // JSON验证按钮事件
+                document.getElementById('btn-validate-json').addEventListener('click', () => {
+                    if (!wasmInstance) {
+                        jsonResult.textContent = 'WASM模块未加载';
+                        return;
+                    }
+                    
+                    const jsonText = jsonInput.value.trim();
+                    if (!jsonText) {
+                        jsonResult.textContent = '请输入JSON文本进行验证';
+                        return;
+                    }
+                    
+                    // 清理之前分配的任何字符串
+                    cleanupStrings();
+                    
+                    // 将JSON文本转换为WASM字符串
+                    const encoder = new TextEncoder();
+                    const jsonBuffer = encoder.encode(jsonText + '\0');
+                    
+                    // 在WASM内存中分配空间
+                    const jsonAlloc = wasmInstance.exports.allocate(jsonBuffer.length);
+                    
+                    // 写入WASM内存
+                    const memory = wasmInstance.exports.memory;
+                    const jsonArray = new Uint8Array(memory.buffer, jsonAlloc, jsonBuffer.length);
+                    jsonArray.set(jsonBuffer);
+                    
+                    // 调用WASM函数
+                    const resultPtr = wasmInstance.exports.parse_json(jsonAlloc);
+                    
+                    // 从WASM内存读取结果字符串
+                    let resultString = '';
+                    if (resultPtr) {
+                        // 找到字符串结束的位置
+                        const memoryArray = new Uint8Array(memory.buffer);
+                        let i = resultPtr;
+                        while (memoryArray[i] !== 0) i++;
+                        
+                        // 转换为JS字符串
+                        const resultBuffer = memoryArray.slice(resultPtr, i);
+                        const decoder = new TextDecoder();
+                        resultString = decoder.decode(resultBuffer);
+                        
+                        // 存储指针以便后续释放
+                        stringPtrs.push(resultPtr);
+                    }
+                    
+                    // 释放JSON输入分配的内存
+                    wasmInstance.exports.deallocate(jsonAlloc, jsonBuffer.length);
+                    
+                    // 显示结果
+                    if (resultString.startsWith('Invalid')) {
+                        jsonResult.innerHTML = `<div style="color: #ff4d4d;">${resultString}</div>`;
+                        
+                        // 尝试提供更多帮助
+                        try {
+                            JSON.parse(jsonText);
+                        } catch (error) {
+                            jsonResult.innerHTML += `<div style="margin-top: 10px;">JavaScript解析器错误: ${error.message}</div>`;
+                        }
+                    } else {
+                        // 尝试格式化JSON
+                        try {
+                            const formattedJson = JSON.stringify(JSON.parse(jsonText), null, 2);
+                            jsonResult.innerHTML = `<div style="color: #4CAF50;">${resultString}</div>`;
+                            jsonResult.innerHTML += '<div style="margin-top: 10px;"><strong>格式化的JSON:</strong></div>';
+                            jsonResult.innerHTML += `<pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 200px;">${formattedJson}</pre>`;
+                        } catch (error) {
+                            jsonResult.innerHTML = `<div style="color: #4CAF50;">${resultString}</div>`;
+                        }
+                    }
+                });
+                
+                // JSON输入框Enter键事件
+                jsonInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                        document.getElementById('btn-validate-json').click();
+                    }
+                });
+                
+                // 添加示例JSON按钮
+                const sampleJsonBtn = document.createElement('button');
+                sampleJsonBtn.textContent = '插入示例JSON';
+                sampleJsonBtn.style.marginRight = '10px';
+                
+                // 插入按钮到DOM
+                const validateBtn = document.getElementById('btn-validate-json');
+                validateBtn.parentNode.insertBefore(sampleJsonBtn, validateBtn);
+                
+                // 示例JSON点击事件
+                sampleJsonBtn.addEventListener('click', () => {
+                    const sampleJson = {
+                        "name": "RusWaCipher",
+                        "version": "1.0.0",
+                        "features": [
+                            "WASM加密",
+                            "安全加载",
+                            "代码混淆"
+                        ],
+                        "settings": {
+                            "algorithm": "chacha20poly1305",
+                            "obfuscationLevel": 2,
+                            "enabled": true
+                        }
+                    };
+                    
+                    jsonInput.value = JSON.stringify(sampleJson);
+                });
+            }
+            
+            // 初始化应用
+            async function initApp() {
+                await initWasm();
+                
+                if (wasmInstance) {
+                    setupCalculator();
+                    setupPasswordChecker();
+                    setupTextEncryption();
+                    setupJsonValidator();
+                    
+                    // 添加页面切换事件，当切换页面时清理字符串
+                    document.querySelectorAll('.tab').forEach(tab => {
+                        tab.addEventListener('click', cleanupStrings);
+                    });
+                }
+            }
+            
+            // 页面关闭前清理
+            window.addEventListener('beforeunload', () => {
+                cleanupStrings();
+            });
+            
+            // 启动应用
+            initApp();
+        });
+    </script>
+</body>
+</html> 

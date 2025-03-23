@@ -1,0 +1,123 @@
+pub mod types;
+pub mod basic;
+pub mod control_flow;
+pub mod function_split;
+pub mod variable_obfuscation;
+pub mod virtualization;
+pub mod vm;
+pub mod engine;
+
+use anyhow::Result;
+use std::path::Path;
+use crate::wasm;
+use crate::wasm::structure::WasmModule;
+use log::info;
+
+// Re-export main types from types
+pub use types::{ObfuscationError, ObfuscationLevel};
+
+// Re-export main functions from various modules
+pub use basic::{apply_transformations, get_transformations};
+pub use control_flow::{obfuscate_control_flow, add_dead_code};
+pub use function_split::split_large_functions;
+pub use variable_obfuscation::rename_locals;
+pub use virtualization::{virtualize_functions, find_virtualizable_functions};
+
+// Export functions from engine module
+pub use engine::apply_obfuscation;
+
+/// Obfuscate a WASM module with the specified level
+pub fn obfuscate(module: WasmModule, level: ObfuscationLevel) -> Result<WasmModule> {
+    info!("Starting WASM module obfuscation, level: {:?}", level);
+    
+    // Get obfuscation transformations
+    let transformations = get_transformations(level);
+    
+    // Apply all transformations
+    let obfuscated_module = apply_transformations(module, &transformations)?;
+    
+    info!("WASM module obfuscation completed");
+    Ok(obfuscated_module)
+}
+
+/// Apply default system obfuscation transformations
+pub fn apply_default_obfuscation(module: WasmModule, level: ObfuscationLevel) -> Result<WasmModule> {
+    info!("Applying default obfuscation, level: {:?}", level);
+    
+    // Apply system default obfuscation methods
+    let result = match level {
+        ObfuscationLevel::Low => {
+            // Low-level obfuscation: only rename local variables
+            rename_locals(module)
+        },
+        ObfuscationLevel::Medium => {
+            // Medium-level obfuscation: renaming + adding dead code
+            let module = rename_locals(module)?;
+            add_dead_code(module)
+        },
+        ObfuscationLevel::High => {
+            // High-level obfuscation: all available obfuscation techniques
+            let module = rename_locals(module)?;
+            let module = add_dead_code(module)?;
+            let module = obfuscate_control_flow(module)?;
+            let module = split_large_functions(module)?;
+            virtualize_functions(module)
+        }
+    };
+    
+    info!("Default obfuscation applied successfully");
+    result
+}
+
+/// Apply obfuscation to a WASM module with optional encryption algorithm
+/// 
+/// # Parameters
+/// 
+/// * `input_file` - Path to the input WASM file
+/// * `output_file` - Path to the output obfuscated WASM file
+/// * `level` - Obfuscation level to apply
+/// * `algorithm` - Optional encryption algorithm to use (defaults to "aes-gcm" if None)
+pub fn obfuscate_wasm(
+    input_file: &Path, 
+    output_file: &Path, 
+    level: ObfuscationLevel,
+    algorithm: Option<&str>
+) -> Result<()> {
+    info!("Starting WASM file obfuscation: {} -> {}", input_file.display(), output_file.display());
+    if let Some(alg) = algorithm {
+        info!("Using encryption algorithm: {}", alg);
+    }
+    
+    // 1. Parse WASM file
+    let wasm_data = std::fs::read(input_file)?;
+    let module = wasm::parser::parse_wasm(&wasm_data)?;
+    
+    // 2. Apply obfuscation
+    let obfuscated_module = obfuscate(module, level)?;
+    
+    // 3. Serialize back to binary
+    let obfuscated_data = wasm::parser::serialize_wasm(&obfuscated_module)?;
+    
+    // 4. Encrypt the result with specified algorithm or default
+    let algorithm_str = algorithm.unwrap_or("aes-gcm");
+    let encrypted_data = crate::crypto::engine::encrypt_data(
+        &obfuscated_data, 
+        &crate::crypto::engine::generate_key(32), // Generate a random key
+        algorithm_str
+    )?;
+    
+    // 5. Write to output file
+    std::fs::write(output_file, encrypted_data)?;
+    
+    info!("WASM file obfuscation and encryption completed");
+    Ok(())
+}
+
+/// Get description for specified obfuscation level
+pub fn get_level_description(level: ObfuscationLevel) -> &'static str {
+    match level {
+        ObfuscationLevel::Low => "Basic obfuscation - Local variable renaming",
+        ObfuscationLevel::Medium => "Medium obfuscation - Adding redundant code and control flow obfuscation",
+        ObfuscationLevel::High => "Advanced obfuscation - High-intensity obfuscation including code splitting and virtualization",
+    }
+} 

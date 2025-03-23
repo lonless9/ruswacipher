@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RusWaCipher 性能测试</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 6px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result-box {
+            background-color: #f8f8f8;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        .benchmark-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .chart-container {
+            margin-top: 30px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RusWaCipher 性能测试比较</h1>
+    
+    <div class="info-box">
+        <p>此页面用于比较加密与未加密WASM模块的性能差异。测试包括加载时间和执行时间的对比。</p>
+    </div>
+    
+    <div class="container">
+        <h2>测试控制</h2>
+        <button id="run-test">运行测试</button>
+        <div id="test-status" class="loading">点击"运行测试"开始性能测试...</div>
+        
+        <div class="benchmark-grid">
+            <div>
+                <h3>加载时间比较</h3>
+                <table id="loading-results">
+                    <thead>
+                        <tr>
+                            <th>模块类型</th>
+                            <th>加载时间 (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>未加密 WASM</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>加密 WASM</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>性能差异</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div>
+                <h3>执行时间比较 (1000次运算)</h3>
+                <table id="execution-results">
+                    <thead>
+                        <tr>
+                            <th>操作</th>
+                            <th>未加密 (ms)</th>
+                            <th>加密 (ms)</th>
+                            <th>差异 (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>加法运算</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>乘法运算</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>字符串处理</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="result-box" id="test-conclusion">
+            测试结果将在这里显示...
+        </div>
+    </div>
+    
+    <script>
+        // 性能测试配置
+        const TEST_CONFIG = {
+            iterations: 1000,         // 每个运算测试的迭代次数
+            warmupIterations: 100     // 预热迭代次数
+        };
+        
+        // 加载未加密的WASM模块
+        async function loadUnencryptedWasm() {
+            const startTime = performance.now();
+            
+            try {
+                const response = await fetch('advanced.wasm');
+                const wasmBytes = await response.arrayBuffer();
+                
+                // 使用相同的导入对象结构，确保公平比较
+                const importObject = {};
+                const wasmModule = await WebAssembly.instantiate(wasmBytes, importObject);
+                
+                const endTime = performance.now();
+                return {
+                    instance: wasmModule.instance,
+                    loadTime: endTime - startTime
+                };
+            } catch (error) {
+                console.error('Error loading unencrypted WASM:', error);
+                throw error;
+            }
+        }
+        
+        // 加载加密的WASM模块
+        async function loadEncryptedWasm() {
+            const startTime = performance.now();
+            
+            try {
+                // 加载密钥
+                const keyResponse = await fetch('advanced.wasm.key');
+                const key = await keyResponse.text();
+                
+                // 确保loader.js只加载一次
+                if (typeof WasmLoader === 'undefined') {
+                    // 加载loader.js
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'loader.js';
+                        script.onload = () => resolve();
+                        script.onerror = (err) => reject(err);
+                        document.head.appendChild(script);
+                    });
+                }
+                
+                // 加载runtime.js
+                if (typeof RusWaCipher === 'undefined') {
+                    await new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = 'ruswacipher-runtime.js';
+                        script.onload = () => resolve();
+                        script.onerror = (err) => reject(err);
+                        document.head.appendChild(script);
+                    });
+                }
+                
+                // 加载并解密WASM
+                const loader = new WasmLoader();
+                const instance = await loader.load('advanced.encrypted.wasm', key.trim());
+                
+                const endTime = performance.now();
+                return {
+                    instance: instance,
+                    loadTime: endTime - startTime
+                };
+            } catch (error) {
+                console.error('Error loading encrypted WASM:', error);
+                throw error;
+            }
+        }
+        
+        // 运行性能测试
+        async function runPerformanceTests() {
+            const testStatus = document.getElementById('test-status');
+            const loadingResults = document.getElementById('loading-results').getElementsByTagName('tbody')[0];
+            const executionResults = document.getElementById('execution-results').getElementsByTagName('tbody')[0];
+            const conclusion = document.getElementById('test-conclusion');
+            
+            try {
+                // 更新状态
+                testStatus.textContent = '正在加载未加密WASM模块...';
+                
+                // 加载未加密WASM
+                const unencryptedResult = await loadUnencryptedWasm();
+                const unencryptedWasm = unencryptedResult.instance;
+                const unencryptedLoadTime = unencryptedResult.loadTime;
+                
+                // 更新加载时间表格
+                loadingResults.rows[0].cells[1].textContent = unencryptedLoadTime.toFixed(2);
+                
+                // 更新状态
+                testStatus.textContent = '正在加载加密WASM模块...';
+                
+                // 加载加密WASM
+                const encryptedResult = await loadEncryptedWasm();
+                const encryptedWasm = encryptedResult.instance;
+                const encryptedLoadTime = encryptedResult.loadTime;
+                
+                // 更新加载时间表格
+                loadingResults.rows[1].cells[1].textContent = encryptedLoadTime.toFixed(2);
+                
+                // 计算加载时间差异
+                const loadTimeDiff = encryptedLoadTime - unencryptedLoadTime;
+                const loadTimeDiffPercent = (loadTimeDiff / unencryptedLoadTime * 100).toFixed(2);
+                loadingResults.rows[2].cells[1].textContent = `+${loadTimeDiff.toFixed(2)} (${loadTimeDiffPercent}%)`;
+                
+                // 更新状态
+                testStatus.textContent = '正在执行性能测试...';
+                
+                // 测试加法性能
+                const unencryptedAddTime = await benchmarkFunction(
+                    () => unencryptedWasm.exports.add(10, 20),
+                    TEST_CONFIG.iterations,
+                    TEST_CONFIG.warmupIterations
+                );
+                
+                const encryptedAddTime = await benchmarkFunction(
+                    () => encryptedWasm.exports.add(10, 20),
+                    TEST_CONFIG.iterations,
+                    TEST_CONFIG.warmupIterations
+                );
+                
+                // 测试乘法性能
+                const unencryptedMultiplyTime = await benchmarkFunction(
+                    () => unencryptedWasm.exports.multiply(12, 34),
+                    TEST_CONFIG.iterations,
+                    TEST_CONFIG.warmupIterations
+                );
+                
+                const encryptedMultiplyTime = await benchmarkFunction(
+                    () => encryptedWasm.exports.multiply(12, 34),
+                    TEST_CONFIG.iterations,
+                    TEST_CONFIG.warmupIterations
+                );
+                
+                // 测试字符串处理性能
+                // 创建用于字符串测试的函数
+                function testStringProcessing(instance) {
+                    // 利用WASM模块的内存分配和字符串处理能力
+                    const text = "TestString123";
+                    const textEncoder = new TextEncoder();
+                    const encodedText = textEncoder.encode(text);
+                    
+                    // 如果wasm模块有allocate和deallocate函数，我们可以测试字符串处理性能
+                    if (instance.exports.allocate && instance.exports.deallocate) {
+                        const len = encodedText.length;
+                        const ptr = instance.exports.allocate(len + 1);
+                        
+                        // 获取内存
+                        const memory = instance.exports.memory;
+                        const view = new Uint8Array(memory.buffer);
+                        
+                        // 复制字符串到WASM内存
+                        for (let i = 0; i < len; i++) {
+                            view[ptr + i] = encodedText[i];
+                        }
+                        view[ptr + len] = 0; // 结束标志
+                        
+                        // 调用字符串反转或类似处理函数（如果有）
+                        if (instance.exports.process_string) {
+                            instance.exports.process_string(ptr, len);
+                        }
+                        
+                        // 释放内存
+                        instance.exports.deallocate(ptr, len + 1);
+                    }
+                }
+                
+                // 检查模块是否支持字符串处理
+                const hasStringSupport = unencryptedWasm.exports.allocate && unencryptedWasm.exports.deallocate;
+                
+                let unencryptedStringTime = 0;
+                let encryptedStringTime = 0;
+                
+                if (hasStringSupport) {
+                    unencryptedStringTime = await benchmarkFunction(
+                        () => testStringProcessing(unencryptedWasm),
+                        TEST_CONFIG.iterations / 10, // 减少迭代以避免内存压力
+                        TEST_CONFIG.warmupIterations / 10
+                    );
+                    
+                    encryptedStringTime = await benchmarkFunction(
+                        () => testStringProcessing(encryptedWasm),
+                        TEST_CONFIG.iterations / 10,
+                        TEST_CONFIG.warmupIterations / 10
+                    );
+                }
+                
+                // 更新执行时间表格
+                executionResults.rows[0].cells[1].textContent = unencryptedAddTime.toFixed(2);
+                executionResults.rows[0].cells[2].textContent = encryptedAddTime.toFixed(2);
+                const addDiff = ((encryptedAddTime - unencryptedAddTime) / unencryptedAddTime * 100).toFixed(2);
+                executionResults.rows[0].cells[3].textContent = `${addDiff}%`;
+                
+                executionResults.rows[1].cells[1].textContent = unencryptedMultiplyTime.toFixed(2);
+                executionResults.rows[1].cells[2].textContent = encryptedMultiplyTime.toFixed(2);
+                const multiplyDiff = ((encryptedMultiplyTime - unencryptedMultiplyTime) / unencryptedMultiplyTime * 100).toFixed(2);
+                executionResults.rows[1].cells[3].textContent = `${multiplyDiff}%`;
+                
+                // 更新字符串处理性能结果
+                if (hasStringSupport) {
+                    executionResults.rows[2].cells[1].textContent = unencryptedStringTime.toFixed(2);
+                    executionResults.rows[2].cells[2].textContent = encryptedStringTime.toFixed(2);
+                    const stringDiff = ((encryptedStringTime - unencryptedStringTime) / unencryptedStringTime * 100).toFixed(2);
+                    executionResults.rows[2].cells[3].textContent = `${stringDiff}%`;
+                } else {
+                    executionResults.rows[2].cells[1].textContent = '不支持';
+                    executionResults.rows[2].cells[2].textContent = '不支持';
+                    executionResults.rows[2].cells[3].textContent = '-';
+                }
+                
+                // 更新状态和结论
+                testStatus.textContent = '性能测试完成';
+                
+                // 准备结论
+                let stringPerformanceText = '无法测试 (模块不支持)';
+                if (hasStringSupport) {
+                    const stringDiff = ((encryptedStringTime - unencryptedStringTime) / unencryptedStringTime * 100).toFixed(2);
+                    stringPerformanceText = `${stringDiff}%`;
+                }
+                
+                conclusion.innerHTML = `
+                    <p><strong>测试结论:</strong></p>
+                    <p>1. 加载时间: 加密WASM模块比未加密模块慢 ${loadTimeDiffPercent}%</p>
+                    <p>2. 执行性能: 
+                        - 加法运算差异: ${addDiff}%
+                        - 乘法运算差异: ${multiplyDiff}%
+                        - 字符串处理差异: ${stringPerformanceText}
+                    </p>
+                    <p>3. 总体影响: ${Math.abs(parseFloat(addDiff)) < 5 && Math.abs(parseFloat(multiplyDiff)) < 5 ? 
+                        '加密对执行性能的影响很小，主要影响在于加载时间。' : 
+                        '加密对执行性能有一定影响，特别是在加载时间上。'}</p>
+                    <p>4. 性能影响分析: 加密WASM模块的性能影响主要来自两方面:
+                       a) 加载时间增加 - 需要额外的解密步骤
+                       b) 运行时执行性能 - 加密本身不影响执行性能，因为WASM在加载时已完全解密
+                    </p>
+                `;
+                
+            } catch (error) {
+                console.error('Error during performance test:', error);
+                testStatus.textContent = '测试过程中发生错误，请查看控制台获取详细信息。';
+            }
+        }
+        
+        // 基准测试函数
+        async function benchmarkFunction(fn, iterations, warmupIterations) {
+            // 预热
+            for (let i = 0; i < warmupIterations; i++) {
+                fn();
+            }
+            
+            // 实际测试
+            const startTime = performance.now();
+            for (let i = 0; i < iterations; i++) {
+                fn();
+            }
+            const endTime = performance.now();
+            
+            return endTime - startTime;
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const runTestButton = document.getElementById('run-test');
+            runTestButton.addEventListener('click', runPerformanceTests);
+        });
+    </script>
+</body>
+</html> 

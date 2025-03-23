@@ -1,0 +1,17 @@
+[package]
+name = "advanced_app"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "advanced"
+path = "advanced.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.87"
+getrandom = { version = "0.2", features = ["js"] }
+
+[profile.release]
+opt-level = 3
+lto = true 

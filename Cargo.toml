@@ -1,0 +1,67 @@
+[package]
+name = "ruswacipher"
+version = "0.1.0"
+edition = "2021"
+authors = ["RusWaCipher Team"]
+description = "A Rust tool for encrypting and protecting WebAssembly modules"
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/yourusername/ruswacipher"
+keywords = ["wasm", "encryption", "security", "webassembly"]
+categories = ["wasm", "cryptography", "command-line-utilities"]
+
+[dependencies]
+# WASM parsing related
+wasmparser = "0.227.1"
+wasm-bindgen = "0.2.100"
+
+# Encryption related - Using libraries from the RustCrypto organization
+aead = "0.5.2"
+aes-gcm = "0.10.3"
+chacha20poly1305 = "0.10.1"
+cipher = "0.4.4"
+rand = "0.9.0"
+getrandom = { version = "0.3.2" }
+
+# CLI related
+clap = { version = "4.5.31", features = ["derive"] }
+
+# Serialization related
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.116"
+bincode = "2.0.1"
+
+# Error handling
+thiserror = "2.0.12"
+anyhow = "1.0.96"
+
+# Logging
+log = "0.4.21"
+env_logger = "0.11.3"
+
+# Utilities
+hex = "0.4.3"
+base64 = "0.22.1"
+rand_chacha = "0.9.0"
+lazy_static = "1.4.0"
+sha2 = "0.10.8"
+hmac = "0.12.1"
+once_cell = "1.21.1"
+
+[dev-dependencies]
+criterion = "0.5.0"
+tempfile = "3.10.1"
+wasm-bindgen-test = "0.3.41"
+
+[[bench]]
+name = "encryption_benchmark"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[features]
+default = []
+http-server = []  # 用于启用测试HTTP服务器功能

@@ -1,0 +1,61 @@
+{
+  "name": "ruswacipher",
+  "version": "0.1.0",
+  "description": "WebAssembly obfuscation and protection tools for Node.js and webpack",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "build:napi": "napi build --platform",
+    "prepublishOnly": "npm run build && npm run build:napi",
+    "test": "jest"
+  },
+  "keywords": [
+    "webassembly",
+    "wasm",
+    "obfuscation",
+    "security",
+    "protection",
+    "webpack",
+    "encryption"
+  ],
+  "author": "RusWaCipher Team",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">= 14.0.0"
+  },
+  "dependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  },
+  "peerDependencies": {
+    "webpack": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.17.25",
+    "@types/webpack": "^5.28.5",
+    "jest": "^29.7.0",
+    "loader-utils": "^3.3.1",
+    "schema-utils": "^4.3.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.8.2",
+    "webpack": "^5.98.0"
+  },
+  "napi": {
+    "name": "ruswacipher-native",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-pc-windows-msvc",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-linux-android"
+      ]
+    }
+  }
+}

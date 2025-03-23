@@ -1,0 +1,16 @@
+[package]
+name = "ruswacipher-node"
+version = "0.1.0"
+edition = "2021"
+description = "Node.js bindings for RusWaCipher"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2.13.3", features = ["serde-json"] }
+napi-derive = "2.13.0"
+ruswacipher = { path = "../.." }
+
+[build-dependencies]
+napi-build = "2.0.1" 
