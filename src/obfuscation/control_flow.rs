@@ -80,6 +80,7 @@ fn find_function_bodies(code_data: &[u8]) -> Vec<(usize, usize)> {
     functions
 }
 
+#[allow(dead_code)]
 /// Generate a sequence of dead code instructions - used for adding dead code
 fn generate_dead_code(_rng: &mut impl Rng) -> Vec<u8> {
     // Create a code block that will never be executed

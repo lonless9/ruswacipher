@@ -75,7 +75,7 @@ pub fn from_byte(byte: u8) -> Option<VMOpcode> {
 
 /// Obfuscated instruction table
 pub fn generate_obfuscated_opcode_map() -> [u8; 256] {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut map = [0u8; 256];
 
     // Initialize as sequential mapping
@@ -381,7 +381,7 @@ impl VMInterpreter {
 pub fn initialize_vm_stack(size: usize) -> Result<Vec<i32>> {
     // 创建虚拟机栈
     let mut stack = vec![0; size];
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // 随机填充栈底几个元素，增加混淆
     for i in 0..4 {

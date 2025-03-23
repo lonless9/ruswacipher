@@ -3,3 +3,6 @@
 /js/dist
 /js/node_modules
 /js/package-lock.json
+/examples/*.wasm
+/examples/*.wasm.key
+/examples/*.meta

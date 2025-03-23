@@ -5,24 +5,24 @@ use std::path::Path;
 
 #[test]
 fn test_key_generation_and_storage() -> Result<()> {
-    // 生成一个随机密钥
-    let key_length = 32; // 256位密钥
+    // Generate a random key
+    let key_length = 32; // 256-bit key
     let key = generate_key(key_length);
 
-    // 验证密钥长度
-    assert_eq!(key.len(), key_length, "生成的密钥长度应为指定长度");
+    // Verify key length
+    assert_eq!(key.len(), key_length, "Generated key length should match specified length");
 
-    // 保存密钥到临时文件
+    // Save key to temporary file
     let key_path = Path::new("target/test_key.bin");
     save_key(&key, key_path)?;
 
-    // 读取密钥
+    // Load key from temporary file
     let loaded_key = load_key(key_path)?;
 
-    // 验证读取的密钥与原始密钥相同
-    assert_eq!(loaded_key, key, "加载的密钥应与原始密钥相同");
+    // Verify loaded key matches original key
+    assert_eq!(loaded_key, key, "Loaded key should match original key");
 
-    // 清理
+    // Clean up
     fs::remove_file(key_path)?;
 
     Ok(())
@@ -30,81 +30,81 @@ fn test_key_generation_and_storage() -> Result<()> {
 
 #[test]
 fn test_aes_gcm_encryption_decryption() -> Result<()> {
-    // 使用AES-GCM算法
+    // Use AES-GCM algorithm
     let algorithm = "aes-gcm";
 
-    // 测试数据
+    // Test data
     let original_data = b"This is a secret message for encryption and decryption testing.";
 
-    // 生成密钥
+    // Generate key
     let key = generate_key(32);
 
-    // 加密数据
+    // Encrypt data
     let encrypted = encrypt_data(original_data, &key, algorithm)?;
 
-    // 验证加密数据与原始数据不同
-    assert_ne!(encrypted, original_data, "加密数据应与原始数据不同");
+    // Verify encrypted data is different from original data
+    assert_ne!(encrypted, original_data, "Encrypted data should be different from original data");
 
-    // 解密数据
+    // Decrypt data
     let decrypted = decrypt_data(&encrypted, &key)?;
 
-    // 验证解密结果与原始数据相同
-    assert_eq!(decrypted, original_data, "解密数据应与原始数据相同");
+    // Verify decrypted data matches original data
+    assert_eq!(decrypted, original_data, "Decrypted data should match original data");
 
     Ok(())
 }
 
 #[test]
 fn test_chacha20poly1305_encryption_decryption() -> Result<()> {
-    // 使用ChaCha20Poly1305算法
+    // Use ChaCha20Poly1305 algorithm
     let algorithm = "chacha20poly1305";
 
-    // 测试数据
+    // Test data
     let original_data = b"This is a secret message for ChaCha20-Poly1305 testing.";
 
-    // 生成密钥
+    // Generate key
     let key = generate_key(32);
 
-    // 加密数据
+    // Encrypt data
     let encrypted = encrypt_data(original_data, &key, algorithm)?;
 
-    // 验证加密数据与原始数据不同
-    assert_ne!(encrypted, original_data, "加密数据应与原始数据不同");
+    // Verify encrypted data is different from original data
+    assert_ne!(encrypted, original_data, "Encrypted data should be different from original data");
 
-    // 解密数据
+    // Decrypt data
     let decrypted = decrypt_data(&encrypted, &key)?;
 
-    // 验证解密结果与原始数据相同
-    assert_eq!(decrypted, original_data, "解密数据应与原始数据相同");
+    // Verify decrypted data matches original data
+    assert_eq!(decrypted, original_data, "Decrypted data should match original data");
 
     Ok(())
 }
 
 #[test]
 fn test_wrong_key_decryption() -> Result<()> {
-    // 使用AES-GCM算法
+    // Use AES-GCM algorithm
     let algorithm = "aes-gcm";
 
-    // 测试数据
+    // Test data
     let original_data = b"This is a secret message that should not be decryptable with wrong key.";
 
-    // 正确的密钥
+    // Correct key
     let correct_key = generate_key(32);
 
-    // 错误的密钥
+    // Wrong key
     let wrong_key = generate_key(32);
 
-    // 确保密钥不同
-    assert_ne!(correct_key, wrong_key, "正确密钥与错误密钥应该不同");
+    // Ensure keys are different
+    assert_ne!(correct_key, wrong_key, "Correct key and wrong key should be different");
 
-    // 加密数据
+    // Encrypt data
     let encrypted = encrypt_data(original_data, &correct_key, algorithm)?;
 
-    // 尝试使用错误的密钥解密 - 这应该会失败
+    // Try to decrypt with wrong key - this should fail
     let decryption_result = decrypt_data(&encrypted, &wrong_key);
 
-    // 验证解密失败
-    assert!(decryption_result.is_err(), "使用错误密钥的解密应该失败");
+    // Verify decryption fails
+    assert!(decryption_result.is_err(), "Decryption with wrong key should fail");
 
     Ok(())
 }
@@ -113,36 +113,36 @@ fn test_wrong_key_decryption() -> Result<()> {
 fn test_file_encryption_decryption() -> Result<()> {
     use ruswacipher::crypto::{decrypt_file, encrypt_file};
 
-    // 准备测试文件
+    // Prepare test file
     let input_path = Path::new("target/test_input.bin");
     let encrypted_path = Path::new("target/test_encrypted.bin");
     let decrypted_path = Path::new("target/test_decrypted.bin");
     let key_path = Path::new("target/test_crypto_key.bin");
 
-    // 创建测试数据
+    // Create test data
     let test_data = b"This is test data for file encryption and decryption.";
     fs::write(input_path, test_data)?;
 
-    // 生成密钥并保存
+    // Generate key and save it
     let key = generate_key(32);
     save_key(&key, key_path)?;
 
-    // 加密文件，使用已生成的密钥
+    // Encrypt file, using the generated key
     encrypt_file(input_path, encrypted_path, Some(key_path), "aes-gcm")?;
 
-    // 验证加密文件已创建且与原始文件不同
-    assert!(encrypted_path.exists(), "加密文件应该存在");
+    // Verify encrypted file is created and different from original file
+    assert!(encrypted_path.exists(), "Encrypted file should exist");
     let encrypted_data = fs::read(encrypted_path)?;
-    assert_ne!(encrypted_data, test_data, "加密文件内容应与原始数据不同");
+    assert_ne!(encrypted_data, test_data, "Encrypted file content should be different from original data");
 
-    // 解密文件
+    // Decrypt file
     decrypt_file(encrypted_path, decrypted_path, key_path)?;
 
-    // 验证解密文件与原始文件内容相同
+    // Verify decrypted file content matches original data
     let decrypted_data = fs::read(decrypted_path)?;
-    assert_eq!(decrypted_data, test_data, "解密文件内容应与原始数据相同");
+    assert_eq!(decrypted_data, test_data, "Decrypted file content should match original data");
 
-    // 清理
+    // Clean up
     fs::remove_file(input_path)?;
     fs::remove_file(encrypted_path)?;
     fs::remove_file(decrypted_path)?;
@@ -156,23 +156,23 @@ fn test_wasm_file_encryption_decryption() -> Result<()> {
     use ruswacipher::crypto::{decrypt_file, encrypt_file};
     use ruswacipher::wasm::load_module;
 
-    // 准备路径
+    // Prepare paths
     let original_wasm_path = Path::new("tests/samples/simple.wasm");
     let encrypted_path = Path::new("target/test_encrypted.wasm");
     let decrypted_path = Path::new("target/test_decrypted.wasm");
     let key_path = Path::new("target/test_wasm_key.bin");
 
-    // 生成密钥并保存
+    // Generate key and save it
     let key = generate_key(32);
     save_key(&key, key_path)?;
 
-    // 确保原始WASM文件存在
-    assert!(original_wasm_path.exists(), "测试需要样本WASM文件");
+    // Ensure original WASM file exists
+    assert!(original_wasm_path.exists(), "Test requires sample WASM file");
 
-    // 先尝试解析原始WASM文件
+    // Try to parse original WASM file
     let original_module = load_module(original_wasm_path)?;
 
-    // 加密WASM文件
+    // Encrypt WASM file
     encrypt_file(
         original_wasm_path,
         encrypted_path,
@@ -180,84 +180,84 @@ fn test_wasm_file_encryption_decryption() -> Result<()> {
         "aes-gcm",
     )?;
 
-    // 验证加密文件已创建且与原始文件不同
-    assert!(encrypted_path.exists(), "加密文件应该存在");
+    // Verify encrypted file is created and different from original file
+    assert!(encrypted_path.exists(), "Encrypted file should exist");
     let original_data = fs::read(original_wasm_path)?;
     let encrypted_data = fs::read(encrypted_path)?;
     assert_ne!(
         encrypted_data, original_data,
-        "加密文件内容应与原始数据不同"
+        "Encrypted file content should be different from original data"
     );
 
-    // 解密WASM文件
+    // Decrypt WASM file
     decrypt_file(encrypted_path, decrypted_path, key_path)?;
 
-    // 验证解密文件已创建
-    assert!(decrypted_path.exists(), "解密文件应该存在");
+    // Verify decrypted file is created
+    assert!(decrypted_path.exists(), "Decrypted file should exist");
 
-    // 尝试解析解密后的WASM文件 - 如果解析成功，说明解密正确
+    // Try to parse decrypted WASM file - if parsing succeeds, decryption is correct
     let decrypted_module = load_module(decrypted_path)?;
 
-    // 验证解密后的模块与原始模块有相同数量的节
+    // Verify decrypted module has the same number of sections as the original module
     assert_eq!(
         decrypted_module.sections.len(),
         original_module.sections.len(),
-        "解密后的WASM模块应有与原始模块相同数量的节"
+        "Decrypted WASM module should have the same number of sections as the original module"
     );
 
-    // 验证模块版本号一致
+    // Verify module version is consistent
     assert_eq!(
         decrypted_module.version, original_module.version,
-        "解密后的WASM模块版本应与原始模块相同"
+        "Decrypted WASM module version should be the same as the original module"
     );
 
-    // 详细验证每个节的类型和内容
+    // Verify each section type and content
     for (i, (orig_section, decrypted_section)) in original_module
         .sections
         .iter()
         .zip(decrypted_module.sections.iter())
         .enumerate()
     {
-        // 验证节类型相同
+        // Verify section type is consistent
         assert_eq!(
             orig_section.section_type as u8, decrypted_section.section_type as u8,
-            "节 #{} 类型不匹配",
+            "Section #{} type does not match",
             i
         );
 
-        // 验证节名称相同（如果是自定义节）
+        // Verify section name is consistent (if it's a custom section)
         if orig_section.section_type == ruswacipher::wasm::structure::SectionType::Custom {
             assert_eq!(
                 orig_section.name, decrypted_section.name,
-                "自定义节 #{} 名称不匹配",
+                "Custom section #{} name does not match",
                 i
             );
         }
 
-        // 验证节数据相同
+        // Verify section data is consistent
         assert_eq!(
             orig_section.data.len(),
             decrypted_section.data.len(),
-            "节 #{} 数据长度不匹配",
+            "Section #{} data length does not match",
             i
         );
 
         assert_eq!(
             orig_section.data, decrypted_section.data,
-            "节 #{} 数据内容不匹配",
+            "Section #{} data content does not match",
             i
         );
     }
 
-    // 直接比较二进制内容
+    // Compare binary content directly
     let original_binary = fs::read(original_wasm_path)?;
     let decrypted_binary = fs::read(decrypted_path)?;
     assert_eq!(
         original_binary, decrypted_binary,
-        "解密后的WASM二进制内容与原始内容不匹配"
+        "Decrypted WASM binary content does not match original content"
     );
 
-    // 清理
+    // Clean up
     fs::remove_file(encrypted_path)?;
     fs::remove_file(decrypted_path)?;
     fs::remove_file(key_path)?;

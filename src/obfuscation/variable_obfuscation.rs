@@ -3,7 +3,7 @@ use anyhow::Result;
 use hmac::{Hmac, Mac};
 use log::{debug, info, trace};
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use sha2::{Digest, Sha256};
+use sha2::Sha256;
 
 /// Rename local variables
 pub fn rename_locals(module: WasmModule) -> Result<WasmModule> {

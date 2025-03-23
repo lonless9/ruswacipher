@@ -6,7 +6,7 @@ authors = ["RusWaCipher Team"]
 description = "A Rust tool for encrypting and protecting WebAssembly modules"
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/yourusername/ruswacipher"
+repository = "https://github.com/lonless9/ruswacipher"
 keywords = ["wasm", "encryption", "security", "webassembly"]
 categories = ["wasm", "cryptography", "command-line-utilities"]
 
@@ -22,6 +22,9 @@ chacha20poly1305 = "0.10.1"
 cipher = "0.4.4"
 rand = "0.9.0"
 getrandom = { version = "0.3.2" }
+
+# Plugin system
+libloading = "0.8.0"
 
 # CLI related
 clap = { version = "4.5.31", features = ["derive"] }
@@ -64,4 +67,4 @@ codegen-units = 1
 
 [features]
 default = []
-http-server = []  # 用于启用测试HTTP服务器功能
+http-server = []  # For enabling test HTTP server functionality

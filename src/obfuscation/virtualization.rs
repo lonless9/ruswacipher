@@ -1,8 +1,5 @@
-use crate::wasm::structure::{Section, SectionType, WasmModule};
+use crate::wasm::structure::{SectionType, WasmModule};
 use anyhow::{anyhow, Result};
-use chacha20poly1305::aead::Aead;
-use chacha20poly1305::KeyInit;
-use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use log::{debug, info, warn};
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -257,7 +254,7 @@ fn extract_function_body(module: &WasmModule, func_idx: usize) -> Result<Vec<u8>
 /// Convert WebAssembly instructions to VM bytecode
 fn convert_to_vm_bytecode(func_body: &[u8]) -> Result<Vec<u8>> {
     let mut vm_bytecode = Vec::with_capacity(func_body.len() * 3);
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut i = 0;
 
     debug!(
@@ -396,7 +393,7 @@ fn convert_to_vm_bytecode(func_body: &[u8]) -> Result<Vec<u8>> {
 /// Create VM metadata
 fn create_vm_metadata(func_idx: usize, vm_bytecode: &[u8]) -> Result<Vec<u8>> {
     let mut metadata = Vec::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Store function index
     metadata.extend_from_slice(&(func_idx as u32).to_le_bytes());
@@ -422,7 +419,7 @@ fn create_vm_metadata(func_idx: usize, vm_bytecode: &[u8]) -> Result<Vec<u8>> {
 /// Encrypt VM bytecode
 fn encrypt_vm_bytecode(vm_bytecode: &[u8], vm_metadata: &[u8]) -> Result<Vec<u8>> {
     let mut encrypted_bytecode = Vec::with_capacity(vm_bytecode.len());
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     // Extract the encryption key from the last 16 bytes of metadata
     let key_start = if vm_metadata.len() >= 16 {
@@ -522,7 +519,7 @@ fn replace_with_vm_interpreter(
     let vm_interpreter = generate_vm_interpreter(&encrypted_bytecode, &vm_metadata)?;
 
     // Create a deep copy of the code section data
-    let mut code_section_data = module.sections[code_section_idx].data.clone();
+    let code_section_data = module.sections[code_section_idx].data.clone();
 
     // Find function body
     let mut func_offset = 0;
@@ -587,7 +584,7 @@ fn replace_with_vm_interpreter(
 }
 
 /// Generate VM interpreter code
-fn generate_vm_interpreter(encrypted_bytecode: &[u8], vm_metadata: &[u8]) -> Result<Vec<u8>> {
+fn generate_vm_interpreter(encrypted_bytecode: &[u8], _vm_metadata: &[u8]) -> Result<Vec<u8>> {
     // Create VM interpreter code
     let mut interpreter_code = Vec::new();
 

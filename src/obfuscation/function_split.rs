@@ -1,7 +1,6 @@
 use crate::wasm::structure::{SectionType, WasmModule};
 use anyhow::{anyhow, Result};
-use log::{debug, info};
-use rand::Rng;
+use log::debug;
 use std::collections::HashSet;
 
 /// WASM instruction type, used for stack analysis
@@ -21,6 +20,7 @@ enum WasmInstrType {
     /// Call instruction
     Call,
     /// Return instruction
+    #[allow(dead_code)]
     Return,
     /// Other or unknown instruction
     Other,
@@ -88,7 +88,6 @@ fn analyze_instr(opcode: u8) -> (WasmInstrType, i32) {
         0x0C..=0x0F => (WasmInstrType::Branch, 0), // br, br_if, etc.
         0x10 => (WasmInstrType::Call, 0),          // call
         0x11 => (WasmInstrType::Call, 0),          // call_indirect
-        0x0F => (WasmInstrType::Return, 0),        // return
 
         // Arithmetic instructions - usually pop two values and push one value
         0x6A..=0x7F => (WasmInstrType::Neutral, -1), // Binary operations
@@ -107,13 +106,13 @@ fn find_safe_split_points(func_body: &[u8]) -> Vec<usize> {
     let mut pos = 0;
 
     // Must skip the local variable declaration part
-    let mut local_decl_count = 0;
+    let mut _local_decl_count = 0;
     if !func_body.is_empty() {
-        local_decl_count = func_body[0] as usize;
+        _local_decl_count = func_body[0] as usize;
         pos = 1;
 
         // Skip all local variable declarations
-        for _ in 0..local_decl_count {
+        for _ in 0.._local_decl_count {
             // Each local variable declaration has a type and count field
             if pos + 1 < func_body.len() {
                 // Skip, do not parse in detail
@@ -350,7 +349,7 @@ fn find_large_functions(
     {
         let mut pos = 1; // Skip the function count field
         while pos < code_section.data.len() {
-            let body_start = pos;
+            let _body_start = pos;
             let mut size_bytes = 0;
             let mut shift = 0;
 
@@ -448,9 +447,9 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
 
     // 2. Extract target function body from code section
     // Default initialization, avoid "possibly-uninitialized" error
-    let mut function_type_index = 0;
+    let mut _function_type_index = 0;
     let mut function_body_data = Vec::new();
-    let mut func_body_start = 0;
+    let mut _func_body_start = 0;
     let mut func_body_end = 0;
     let mut func_start = 0;
     let mut num_funcs = 0;
@@ -503,7 +502,7 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
 
         // Read the type index of the target function
         if pos < function_data.len() {
-            function_type_index = function_data[pos] as usize;
+            _function_type_index = function_data[pos] as usize;
         } else {
             return Err(anyhow!(
                 "Function type index not found for function {}",
@@ -558,14 +557,14 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
 
             if current_func_idx == func_idx {
                 // Find the target function
-                func_body_start = i;
+                _func_body_start = i;
                 func_body_end = i + size;
 
                 if func_body_end > code_data.len() {
                     return Err(anyhow!("Function body exceeds code section range"));
                 }
 
-                function_body_data = code_data[func_body_start..func_body_end].to_vec();
+                function_body_data = code_data[_func_body_start..func_body_end].to_vec();
                 break;
             }
 
@@ -581,8 +580,8 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
 
     // 3. Find safe function split points
     // Use instruction analysis to find stack balance safe points
-    let min_split_size = 10; // Minimum size of sub-functions
-    let max_split_points = 4; // Maximum split into 5 functions (4 split points)
+    let _min_split_size = 10; // Minimum size of sub-functions
+    let _max_split_points = 4; // Maximum split into 5 functions (4 split points)
 
     let split_points = find_safe_split_points(&function_body_data);
 
@@ -737,7 +736,7 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
         for _ in 0..num_subfuncs {
             // Add type index (LEB128 encoded)
             let mut type_idx_encoded = Vec::new();
-            write_leb128(&mut type_idx_encoded, function_type_index as u32);
+            write_leb128(&mut type_idx_encoded, _function_type_index as u32);
             function_data.extend_from_slice(&type_idx_encoded);
         }
 
@@ -763,7 +762,7 @@ fn split_function(module: WasmModule, func_idx: usize) -> Result<WasmModule> {
         );
 
         // Determine the position of the sub-functions (after all existing functions)
-        let subfuncs_start = code_section.data.len();
+        let _subfuncs_start = code_section.data.len();
 
         // Add sub-functions
         for sub_body in sub_func_bodies {

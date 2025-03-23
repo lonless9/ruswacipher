@@ -1,6 +1,5 @@
 use ruswacipher::crypto::plugins;
 use std::fs;
-use std::path::Path;
 use tempfile::tempdir;
 
 /// Initialize plugin system

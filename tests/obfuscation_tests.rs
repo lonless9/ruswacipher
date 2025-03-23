@@ -1,5 +1,7 @@
 use std::path::Path;
 use tempfile::tempdir;
+use std::sync::Once;
+use env_logger::Env;
 
 use ruswacipher::obfuscation::{
     add_dead_code, find_virtualizable_functions, obfuscate_control_flow, obfuscate_wasm,
@@ -8,6 +10,15 @@ use ruswacipher::obfuscation::{
 use ruswacipher::wasm::parser::{parse_file, parse_wasm, serialize_wasm};
 use ruswacipher::wasm::structure::WasmModule;
 use std::fs;
+
+// Ensure logger is initialized only once
+static INIT_LOGGER: Once = Once::new();
+
+fn setup() {
+    INIT_LOGGER.call_once(|| {
+        env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
+    });
+}
 
 // Get test sample file
 fn get_test_wasm() -> WasmModule {
@@ -18,6 +29,9 @@ fn get_test_wasm() -> WasmModule {
 
 #[test]
 fn test_basic_obfuscation() {
+    // Initialize logger
+    setup();
+
     // Create temporary directory
     let temp_dir = tempdir().unwrap();
     let input_file = Path::new("tests/samples/simple.wasm");
@@ -41,6 +55,9 @@ fn test_basic_obfuscation() {
 
 #[test]
 fn test_medium_obfuscation() {
+    // 初始化日志
+    setup();
+
     // Create temporary directory
     let temp_dir = tempdir().unwrap();
     let input_file = Path::new("tests/samples/simple.wasm");
@@ -64,6 +81,9 @@ fn test_medium_obfuscation() {
 
 #[test]
 fn test_high_obfuscation() {
+    // 初始化日志
+    setup();
+
     // Create temporary directory
     let temp_dir = tempdir().unwrap();
     let input_file = Path::new("tests/samples/simple.wasm");
@@ -87,6 +107,9 @@ fn test_high_obfuscation() {
 
 #[test]
 fn test_variable_renaming() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -110,6 +133,9 @@ fn test_variable_renaming() {
 
 #[test]
 fn test_dead_code_insertion() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -153,6 +179,9 @@ fn test_dead_code_insertion() {
 
 #[test]
 fn test_control_flow_obfuscation() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -176,6 +205,9 @@ fn test_control_flow_obfuscation() {
 
 #[test]
 fn test_function_splitting() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -205,6 +237,9 @@ fn test_function_splitting() {
 
 #[test]
 fn test_find_virtualizable_functions() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -221,6 +256,9 @@ fn test_find_virtualizable_functions() {
 
 #[test]
 fn test_virtualization() {
+    // 初始化日志
+    setup();
+
     // Get test module
     let module = get_test_wasm();
 
@@ -271,7 +309,7 @@ fn test_virtualization() {
 fn test_obfuscation_chain() {
     // Get test module and create original WASM bytes for subsequent tests
     let original_module = get_test_wasm();
-    let original_bytes = serialize_wasm(&original_module).unwrap();
+    let _original_bytes = serialize_wasm(&original_module).unwrap();
 
     // Apply obfuscation chain - parse module after each operation
     let module1 = rename_locals(original_module).unwrap();
