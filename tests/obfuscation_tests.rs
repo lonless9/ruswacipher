@@ -30,8 +30,13 @@ fn test_basic_obfuscation() {
     // Verify output file exists
     assert!(output_file.exists());
     
+    // 先解密文件再解析
+    let key_file = output_file.with_extension("wasm.key");
+    let decrypted_file = temp_dir.path().join("decrypted.wasm");
+    ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file).unwrap();
+    
     // Parse obfuscated file and verify its format is valid
-    let module = parse_file(&output_file).unwrap();
+    let module = parse_file(&decrypted_file).unwrap();
     assert!(module.sections.len() > 0);
 }
 
@@ -48,8 +53,13 @@ fn test_medium_obfuscation() {
     // Verify output file exists
     assert!(output_file.exists());
     
+    // 先解密文件再解析
+    let key_file = output_file.with_extension("wasm.key");
+    let decrypted_file = temp_dir.path().join("decrypted_medium.wasm");
+    ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file).unwrap();
+    
     // Parse obfuscated file and verify its format is valid
-    let module = parse_file(&output_file).unwrap();
+    let module = parse_file(&decrypted_file).unwrap();
     assert!(module.sections.len() > 0);
 }
 
@@ -66,8 +76,13 @@ fn test_high_obfuscation() {
     // Verify output file exists
     assert!(output_file.exists());
     
+    // 先解密文件再解析
+    let key_file = output_file.with_extension("wasm.key");
+    let decrypted_file = temp_dir.path().join("decrypted_high.wasm");
+    ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file).unwrap();
+    
     // Parse obfuscated file and verify its format is valid
-    let module = parse_file(&output_file).unwrap();
+    let module = parse_file(&decrypted_file).unwrap();
     assert!(module.sections.len() > 0);
 }
 

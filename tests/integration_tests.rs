@@ -40,8 +40,14 @@ fn test_full_obfuscation_pipeline() -> Result<()> {
     println!("\nMethod 1: Applying all obfuscations at once using high-level API...");
     obfuscate_wasm(input_file, &output_file, ObfuscationLevel::High, None)?;
     
-    // Analyze one-step obfuscation result
-    let obfuscated_module_1 = parse_file(&output_file)?;
+    // For encrypted output, the direct parsing will fail. 
+    // Let's also create a decrypted output for verification
+    let key_file = output_file.with_extension("wasm.key");
+    let decrypted_file = temp_dir.path().join("decrypted_full.wasm");
+    ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file)?;
+    
+    // Analyze obfuscation result using the decrypted file
+    let obfuscated_module_1 = parse_file(&decrypted_file)?;
     analyze_module(&obfuscated_module_1, "After High-Level Obfuscation");
     
     // Method 2: Manually apply each obfuscation step (detailed path)
@@ -153,8 +159,13 @@ fn test_comprehensive_obfuscation() -> Result<()> {
         // Get file size
         let file_size = fs::metadata(&output_file)?.len();
         
+        // Decrypt the file for verification
+        let key_file = output_file.with_extension("wasm.key");
+        let decrypted_file = temp_dir.path().join(format!("decrypted_{:?}.wasm", level));
+        ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file)?;
+        
         // Verify generated file
-        let obfuscated_module = parse_file(&output_file)?;
+        let obfuscated_module = parse_file(&decrypted_file)?;
         
         // Print results
         println!("Obfuscation level: {:?}", level);

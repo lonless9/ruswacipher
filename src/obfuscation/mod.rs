@@ -100,14 +100,21 @@ pub fn obfuscate_wasm(
     
     // 4. Encrypt the result with specified algorithm or default
     let algorithm_str = algorithm.unwrap_or("aes-gcm");
+    let key = crate::crypto::engine::generate_key(32); // Generate a random key
+    
     let encrypted_data = crate::crypto::engine::encrypt_data(
         &obfuscated_data, 
-        &crate::crypto::engine::generate_key(32), // Generate a random key
+        &key,
         algorithm_str
     )?;
     
     // 5. Write to output file
-    std::fs::write(output_file, encrypted_data)?;
+    std::fs::write(output_file, &encrypted_data)?;
+    
+    // 6. Save key to file - use the same naming convention as in tests
+    let key_path = output_file.with_extension("wasm.key");
+    crate::crypto::engine::save_key(&key, &key_path)?;
+    info!("Generated key and saved to: {}", key_path.display());
     
     info!("WASM file obfuscation and encryption completed");
     Ok(())
