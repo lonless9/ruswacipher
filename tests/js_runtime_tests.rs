@@ -1,42 +1,55 @@
-use std::path::Path;
-use std::fs;
 use anyhow::Result;
-use ruswacipher::runtime::{generate_js_runtime, generate_web_files};
 use ruswacipher::crypto::{encrypt_file, generate_key, save_key};
+use ruswacipher::runtime::{generate_js_runtime, generate_web_files};
+use std::fs;
+use std::path::Path;
 
 #[test]
 fn test_js_runtime_generation() -> Result<()> {
     // Test generating JavaScript runtime for AES-GCM
     let runtime_path = Path::new("target/test-runtime-aes.js");
     generate_js_runtime(runtime_path, "aes-gcm")?;
-    
+
     // Verify file was created
-    assert!(runtime_path.exists(), "JavaScript runtime file should be created");
-    
+    assert!(
+        runtime_path.exists(),
+        "JavaScript runtime file should be created"
+    );
+
     // Verify file content contains expected AES-GCM decryption code
     let content = fs::read_to_string(runtime_path)?;
-    assert!(content.contains("RusWaCipher - WebAssembly Decryption Runtime (AES-GCM)"), 
-            "Runtime should contain AES-GCM comment");
-    assert!(content.contains("decrypt"), "Runtime should contain decryption function");
-    
+    assert!(
+        content.contains("RusWaCipher - WebAssembly Decryption Runtime (AES-GCM)"),
+        "Runtime should contain AES-GCM comment"
+    );
+    assert!(
+        content.contains("decrypt"),
+        "Runtime should contain decryption function"
+    );
+
     // Clean up
     fs::remove_file(runtime_path)?;
-    
+
     // Test generating JavaScript runtime for ChaCha20Poly1305
     let runtime_path = Path::new("target/test-runtime-chacha.js");
     generate_js_runtime(runtime_path, "chacha20poly1305")?;
-    
+
     // Verify file was created
-    assert!(runtime_path.exists(), "JavaScript runtime file should be created");
-    
+    assert!(
+        runtime_path.exists(),
+        "JavaScript runtime file should be created"
+    );
+
     // Verify file content contains expected ChaCha20Poly1305 decryption code
     let content = fs::read_to_string(runtime_path)?;
-    assert!(content.contains("RusWaCipher - WebAssembly Decryption Runtime (ChaCha20-Poly1305)"), 
-            "Runtime should contain ChaCha20-Poly1305 comment");
-    
+    assert!(
+        content.contains("RusWaCipher - WebAssembly Decryption Runtime (ChaCha20-Poly1305)"),
+        "Runtime should contain ChaCha20-Poly1305 comment"
+    );
+
     // Clean up
     fs::remove_file(runtime_path)?;
-    
+
     Ok(())
 }
 
@@ -44,35 +57,47 @@ fn test_js_runtime_generation() -> Result<()> {
 fn test_web_files_generation() -> Result<()> {
     // Generate Web files for AES-GCM
     let web_dir = Path::new("target/test-web-files");
-    
+
     // Ensure directory exists
     fs::create_dir_all(web_dir)?;
-    
+
     // Generate Web files
     generate_web_files(web_dir, "aes-gcm")?;
-    
+
     // Verify all necessary files are created
     let runtime_path = web_dir.join("ruswacipher-runtime.js");
     let loader_path = web_dir.join("loader.js");
     let html_path = web_dir.join("example.html");
-    
+
     assert!(runtime_path.exists(), "Runtime file should be created");
     assert!(loader_path.exists(), "Loader file should be created");
     assert!(html_path.exists(), "HTML example file should be created");
-    
+
     // Verify file content contains expected code
     let runtime_content = fs::read_to_string(&runtime_path)?;
     let loader_content = fs::read_to_string(&loader_path)?;
     let html_content = fs::read_to_string(&html_path)?;
-    
-    assert!(runtime_content.contains("RusWaCipher"), "Runtime should contain RusWaCipher namespace");
-    assert!(loader_content.contains("WasmLoader"), "Loader should contain WasmLoader class");
-    assert!(loader_content.contains("load(url, key"), "Loader should contain load method");
-    assert!(html_content.contains("<title>RusWaCipher Example</title>"), "HTML should contain correct title");
-    
+
+    assert!(
+        runtime_content.contains("RusWaCipher"),
+        "Runtime should contain RusWaCipher namespace"
+    );
+    assert!(
+        loader_content.contains("WasmLoader"),
+        "Loader should contain WasmLoader class"
+    );
+    assert!(
+        loader_content.contains("load(url, key"),
+        "Loader should contain load method"
+    );
+    assert!(
+        html_content.contains("<title>RusWaCipher Example</title>"),
+        "HTML should contain correct title"
+    );
+
     // Clean up
     fs::remove_dir_all(web_dir)?;
-    
+
     Ok(())
 }
 
@@ -83,46 +108,46 @@ fn test_wasm_encryption_with_js_runtime() -> Result<()> {
     let encrypted_path = Path::new("target/test_js_encrypted.wasm");
     let key_path = Path::new("target/test_js_key.bin");
     let runtime_dir = Path::new("target/test_js_runtime");
-    
+
     // Ensure WASM sample file exists
     assert!(wasm_path.exists(), "Test requires sample WASM file");
-    
+
     // Ensure runtime directory exists
     fs::create_dir_all(runtime_dir)?;
-    
+
     // Generate key and save it
     let key = generate_key(32);
     save_key(&key, key_path)?;
-    
+
     // Encrypt WASM file
     encrypt_file(wasm_path, encrypted_path, Some(key_path), "aes-gcm")?;
-    
+
     // Verify encrypted file was created
     assert!(encrypted_path.exists(), "Encrypted WASM file should exist");
-    
+
     // Copy encrypted file to runtime directory, simplifying access
     let runtime_wasm_path = runtime_dir.join("encrypted.wasm");
     fs::copy(encrypted_path, &runtime_wasm_path)?;
-    
+
     // Generate JavaScript runtime
     generate_web_files(runtime_dir, "aes-gcm")?;
-    
+
     // Verify all necessary files are created
     let runtime_path = runtime_dir.join("ruswacipher-runtime.js");
     let loader_path = runtime_dir.join("loader.js");
     let html_path = runtime_dir.join("example.html");
-    
+
     assert!(runtime_path.exists(), "Runtime file should be created");
     assert!(loader_path.exists(), "Loader file should be created");
     assert!(html_path.exists(), "HTML example file should be created");
-    
+
     // Create a test HTML file, integrating encrypted WASM and key
     let test_html_path = runtime_dir.join("test.html");
-    
+
     // Read key file content and ensure proper handling
     let key_base64 = fs::read_to_string(key_path)?;
     let key_base64 = key_base64.trim(); // Ensure any extra characters are removed
-    
+
     // Create a simplified test HTML
     let test_html = r###"<!DOCTYPE html>
 <html>
@@ -546,21 +571,27 @@ fn test_wasm_encryption_with_js_runtime() -> Result<()> {
 
     // Replace key placeholder
     let test_html = test_html.replace("KEY_PLACEHOLDER", &key_base64);
-    
+
     fs::write(&test_html_path, test_html)?;
-    
+
     // Since we cannot run browsers in automated tests, we cannot verify the actual JavaScript decryption runtime
     // Here we only verify the generated files are correct, and actual testing needs to be done manually in a browser
-    println!("To test JavaScript decryption runtime in browser, open file: {}", test_html_path.display());
+    println!(
+        "To test JavaScript decryption runtime in browser, open file: {}",
+        test_html_path.display()
+    );
     println!("Note: Opening file directly in browser may cause CORS errors. It's recommended to use a local web server:");
     println!("  1. cd {}", std::env::current_dir()?.display());
     println!("  2. python3 -m http.server 8000");
-    println!("  3. Access in browser: http://localhost:8000/{}", runtime_dir.display().to_string().replace("\\", "/"));
-    
+    println!(
+        "  3. Access in browser: http://localhost:8000/{}",
+        runtime_dir.display().to_string().replace("\\", "/")
+    );
+
     // Clean up (commented out for manual testing)
     // fs::remove_file(encrypted_path)?;
     // fs::remove_file(key_path)?;
     // fs::remove_dir_all(runtime_dir)?;
-    
+
     Ok(())
-} 
+}

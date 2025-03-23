@@ -1,7 +1,7 @@
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
-use anyhow::{Result, Context};
 
 /// Application configuration
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,27 +33,31 @@ impl Config {
         if !path.exists() {
             return Ok(Config::default());
         }
-        
+
         let content = fs::read_to_string(path)
             .with_context(|| format!("Cannot read configuration file: {}", path.display()))?;
-            
+
         serde_json::from_str(&content)
             .with_context(|| format!("Cannot parse configuration file: {}", path.display()))
     }
-    
+
     /// Save configuration to file
     pub fn save(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("Cannot create configuration directory: {}", parent.display()))?;
+            fs::create_dir_all(parent).with_context(|| {
+                format!(
+                    "Cannot create configuration directory: {}",
+                    parent.display()
+                )
+            })?;
         }
-        
-        let content = serde_json::to_string_pretty(self)
-            .with_context(|| "Cannot serialize configuration")?;
-            
+
+        let content =
+            serde_json::to_string_pretty(self).with_context(|| "Cannot serialize configuration")?;
+
         fs::write(path, content)
             .with_context(|| format!("Cannot write configuration file: {}", path.display()))?;
-            
+
         Ok(())
     }
-} 
+}

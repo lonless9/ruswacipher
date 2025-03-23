@@ -7,14 +7,14 @@ fn bench_aes_gcm_encrypt(c: &mut Criterion) {
     // 生成随机密钥
     let mut key = vec![0u8; 32];
     rand::rng().fill_bytes(&mut key);
-    
+
     // 生成随机数据
     let mut data = vec![0u8; 1024 * 1024]; // 1MB
     rand::rng().fill_bytes(&mut data);
-    
+
     // 创建加密器
     let cipher = AesGcmCipher::new(&key).unwrap();
-    
+
     // 基准测试
     c.bench_function("aes_gcm_encrypt_1mb", |b| {
         b.iter(|| {
@@ -28,14 +28,14 @@ fn bench_chacha20poly1305_encrypt(c: &mut Criterion) {
     // 生成随机密钥
     let mut key = vec![0u8; 32];
     rand::rng().fill_bytes(&mut key);
-    
+
     // 生成随机数据
     let mut data = vec![0u8; 1024 * 1024]; // 1MB
     rand::rng().fill_bytes(&mut data);
-    
+
     // 创建加密器
     let cipher = ChaCha20Poly1305Cipher::new(&key).unwrap();
-    
+
     // 基准测试
     c.bench_function("chacha20poly1305_encrypt_1mb", |b| {
         b.iter(|| {
@@ -49,15 +49,15 @@ fn bench_aes_gcm_decrypt(c: &mut Criterion) {
     // 生成随机密钥
     let mut key = vec![0u8; 32];
     rand::rng().fill_bytes(&mut key);
-    
+
     // 生成随机数据
     let mut data = vec![0u8; 1024 * 1024]; // 1MB
     rand::rng().fill_bytes(&mut data);
-    
+
     // 创建加密器并加密数据
     let cipher = AesGcmCipher::new(&key).unwrap();
     let encrypted = cipher.encrypt(&data).unwrap();
-    
+
     // 基准测试
     c.bench_function("aes_gcm_decrypt_1mb", |b| {
         b.iter(|| {
@@ -71,15 +71,15 @@ fn bench_chacha20poly1305_decrypt(c: &mut Criterion) {
     // 生成随机密钥
     let mut key = vec![0u8; 32];
     rand::rng().fill_bytes(&mut key);
-    
+
     // 生成随机数据
     let mut data = vec![0u8; 1024 * 1024]; // 1MB
     rand::rng().fill_bytes(&mut data);
-    
+
     // 创建加密器并加密数据
     let cipher = ChaCha20Poly1305Cipher::new(&key).unwrap();
     let encrypted = cipher.encrypt(&data).unwrap();
-    
+
     // 基准测试
     c.bench_function("chacha20poly1305_decrypt_1mb", |b| {
         b.iter(|| {
@@ -96,4 +96,4 @@ criterion_group!(
     bench_aes_gcm_decrypt,
     bench_chacha20poly1305_decrypt
 );
-criterion_main!(benches); 
+criterion_main!(benches);

@@ -1,9 +1,9 @@
 pub mod cli;
-pub mod wasm;
 pub mod crypto;
-pub mod runtime;
 pub mod obfuscation;
+pub mod runtime;
+pub mod wasm;
 
 // Re-export commonly used features
-pub use crypto::{encrypt_file, decrypt_file};
-pub use wasm::{load_module, save_module}; 
+pub use crypto::{decrypt_file, encrypt_file};
+pub use wasm::{load_module, save_module};

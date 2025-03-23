@@ -1,5 +1,5 @@
-use anyhow::Result;
 use crate::wasm::structure::WasmModule;
+use anyhow::Result;
 use log::debug;
 use thiserror::Error;
 
@@ -8,7 +8,7 @@ use thiserror::Error;
 pub enum ObfuscationError {
     #[error("Unsupported obfuscation level: {0}")]
     UnsupportedLevel(u8),
-    
+
     #[error("Obfuscation operation failed: {0}")]
     OperationFailed(String),
 }
@@ -37,7 +37,10 @@ impl From<u8> for ObfuscationLevel {
         match ObfuscationLevel::try_from_u8(level) {
             Ok(level) => level,
             Err(_) => {
-                debug!("Invalid obfuscation level: {}, using default level (Low)", level);
+                debug!(
+                    "Invalid obfuscation level: {}, using default level (Low)",
+                    level
+                );
                 ObfuscationLevel::Low
             }
         }
@@ -45,4 +48,4 @@ impl From<u8> for ObfuscationLevel {
 }
 
 /// Define obfuscation transformation type
-pub type Transformation = fn(WasmModule) -> Result<WasmModule>; 
+pub type Transformation = fn(WasmModule) -> Result<WasmModule>;

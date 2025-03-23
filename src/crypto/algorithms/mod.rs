@@ -10,13 +10,13 @@ use std::marker::Sync;
 pub trait Cipher: Send + Sync + Debug {
     /// Encrypt data
     fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>>;
-    
+
     /// Decrypt data
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>>;
-    
+
     /// Algorithm name
     fn algorithm_name(&self) -> &'static str;
-    
+
     /// Algorithm description
     fn description(&self) -> &'static str;
 }
@@ -26,7 +26,10 @@ pub fn create_cipher(algorithm: &str, key: &[u8]) -> Result<Box<dyn Cipher>> {
     match algorithm {
         "aes-gcm" => Ok(Box::new(AesGcmCipher::new(key)?)),
         "chacha20poly1305" => Ok(Box::new(ChaCha20Poly1305Cipher::new(key)?)),
-        _ => Err(anyhow::anyhow!("Unsupported encryption algorithm: {}", algorithm)),
+        _ => Err(anyhow::anyhow!(
+            "Unsupported encryption algorithm: {}",
+            algorithm
+        )),
     }
 }
 
@@ -43,10 +46,8 @@ impl AesGcmCipher {
         if key.len() != 32 {
             anyhow::bail!("AES-GCM requires a 32-byte (256-bit) key");
         }
-        
-        Ok(Self {
-            key: key.to_vec(),
-        })
+
+        Ok(Self { key: key.to_vec() })
     }
 }
 
@@ -55,16 +56,16 @@ impl Cipher for AesGcmCipher {
         // Use plugin implementation for encryption
         crate::crypto::plugins::encrypt_with_plugin(data, &self.key, "aes-gcm")
     }
-    
+
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         // Use plugin implementation for decryption
         crate::crypto::plugins::decrypt_with_plugin(data, &self.key, "aes-gcm")
     }
-    
+
     fn algorithm_name(&self) -> &'static str {
         "aes-gcm"
     }
-    
+
     fn description(&self) -> &'static str {
         "AES-GCM (Galois/Counter Mode) 256-bit encryption algorithm"
     }
@@ -83,10 +84,8 @@ impl ChaCha20Poly1305Cipher {
         if key.len() != 32 {
             anyhow::bail!("ChaCha20-Poly1305 requires a 32-byte key");
         }
-        
-        Ok(Self {
-            key: key.to_vec(),
-        })
+
+        Ok(Self { key: key.to_vec() })
     }
 }
 
@@ -95,17 +94,17 @@ impl Cipher for ChaCha20Poly1305Cipher {
         // Use plugin implementation for encryption
         crate::crypto::plugins::encrypt_with_plugin(data, &self.key, "chacha20poly1305")
     }
-    
+
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         // Use plugin implementation for decryption
         crate::crypto::plugins::decrypt_with_plugin(data, &self.key, "chacha20poly1305")
     }
-    
+
     fn algorithm_name(&self) -> &'static str {
         "chacha20poly1305"
     }
-    
+
     fn description(&self) -> &'static str {
         "ChaCha20-Poly1305 stream cipher and authentication algorithm"
     }
-} 
+}

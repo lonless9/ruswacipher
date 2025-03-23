@@ -1,4 +1,4 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -70,35 +70,35 @@ impl WasmModule {
             sections: Vec::new(),
         }
     }
-    
+
     /// Get custom sections
     pub fn get_custom_sections(&self, name: &str) -> Vec<&Section> {
         self.sections
             .iter()
-            .filter(|section| 
-                section.section_type == SectionType::Custom && 
-                section.name.as_ref().map_or(false, |n| n == name)
-            )
+            .filter(|section| {
+                section.section_type == SectionType::Custom
+                    && section.name.as_ref().map_or(false, |n| n == name)
+            })
             .collect()
     }
-    
+
     /// Add a new section
     pub fn add_section(&mut self, section: Section) {
         self.sections.push(section);
     }
-    
+
     /// Write module to file
     pub fn write_to_file(&self, path: &Path) -> Result<()> {
         let mut file = File::create(path)
             .with_context(|| format!("Cannot create file: {}", path.display()))?;
-        
+
         // Use the serialize_wasm function from parser module to get the binary data
         let wasm_data = crate::wasm::parser::serialize_wasm(self)?;
-        
+
         // Write the serialized data to file
         file.write_all(&wasm_data)
             .with_context(|| "Failed to write WASM data")?;
-        
+
         Ok(())
     }
-} 
+}

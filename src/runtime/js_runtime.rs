@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 /// Generate JavaScript runtime code for decryption
 pub fn generate_runtime(algorithm: &str) -> Result<String> {
@@ -310,7 +310,8 @@ fn generate_aes_gcm_runtime() -> String {
    typeof window !== 'undefined' ? window : 
    typeof global !== 'undefined' ? global : 
    typeof self !== 'undefined' ? self : {});
-"#.to_string()
+"#
+    .to_string()
 }
 
 /// Generate JavaScript decryption code for ChaCha20-Poly1305
@@ -471,4 +472,4 @@ fn generate_chacha20poly1305_runtime() -> String {
    typeof global !== 'undefined' ? global : 
    typeof self !== 'undefined' ? self : {});
 "#.to_string()
-} 
+}
