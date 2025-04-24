@@ -22,6 +22,7 @@ A Rust-based tool for encrypting and protecting WebAssembly (WASM) modules, prev
 - 🔄 **Decryption Runtime**: Browser-side JavaScript decryption library
 - 💻 **CLI Tools**: Command-line interface for encryption operations
 - 🧰 **Plugin System**: Support for custom encryption algorithms
+- 🛡️ **Code Obfuscation**: Control flow obfuscation, variable renaming, dead code insertion
 
 ## 🛠️ Technology Stack
 
@@ -35,8 +36,8 @@ A Rust-based tool for encrypting and protecting WebAssembly (WASM) modules, prev
 RusWaCipher is an early-stage project with many features under active development:
 
 - 🟢 **Core Encryption**: Basic encryption/decryption functionality
-- 🟡 **WASM Processing**: Binary parsing and modification
-- 🟡 **Code Obfuscation**: Control flow obfuscation, dead code insertion
+- 🟢 **WASM Processing**: Binary parsing and modification
+- 🟢 **Code Obfuscation**: Control flow obfuscation, dead code insertion
 - 🟡 **JavaScript Runtime**: Browser-side decryption
 - 🟡 **Plugin System**: Custom algorithm integration
 
@@ -51,7 +52,14 @@ cargo install --path .
 ### 🔒 Encrypting WASM Modules
 
 ```bash
+#  encrypt
+ruswacipher encrypt -i input.wasm -o encrypted.wasm -a aes-gcm
+
+# encrypt & obfuscation
 ruswacipher encrypt -i input.wasm -o encrypted.wasm -a aes-gcm -b
+
+# obfuscation level
+ruswacipher encrypt -i input.wasm -o encrypted.wasm -a aes-gcm -b --obfuscation-level 3
 ```
 
 ### 🔓 Decrypting WASM Modules

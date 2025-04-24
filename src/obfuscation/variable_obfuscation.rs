@@ -98,7 +98,7 @@ fn is_local_decl_pattern(bytes: &[u8]) -> bool {
 }
 
 /// Scramble local variable name
-fn scramble_local_name(data: &mut Vec<u8>, pos: usize) {
+fn scramble_local_name(data: &mut [u8], pos: usize) {
     if pos + 2 >= data.len() {
         return;
     }
@@ -117,7 +117,7 @@ fn scramble_local_name(data: &mut Vec<u8>, pos: usize) {
 
     // 获取原始的局部变量索引值
     let original_var_index = match data[pos] {
-        0x20 | 0x21 | 0x22 | 0x23 => {
+        0x20..=0x23 => {
             if pos + 1 < data.len() && (data[pos + 1] & 0x80) == 0 {
                 data[pos + 1] as usize
             } else {
@@ -134,7 +134,7 @@ fn scramble_local_name(data: &mut Vec<u8>, pos: usize) {
 
     match data[pos] {
         // 局部变量指令
-        0x20 | 0x21 | 0x22 | 0x23 => {
+        0x20..=0x23 => {
             // get_local, set_local, tee_local instructions
             // 只处理单字节变量索引以确保安全
             if pos + 1 < data.len() && (data[pos + 1] & 0x80) == 0 {

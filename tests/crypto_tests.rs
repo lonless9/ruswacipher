@@ -10,7 +10,11 @@ fn test_key_generation_and_storage() -> Result<()> {
     let key = generate_key(key_length);
 
     // Verify key length
-    assert_eq!(key.len(), key_length, "Generated key length should match specified length");
+    assert_eq!(
+        key.len(),
+        key_length,
+        "Generated key length should match specified length"
+    );
 
     // Save key to temporary file
     let key_path = Path::new("target/test_key.bin");
@@ -43,13 +47,19 @@ fn test_aes_gcm_encryption_decryption() -> Result<()> {
     let encrypted = encrypt_data(original_data, &key, algorithm)?;
 
     // Verify encrypted data is different from original data
-    assert_ne!(encrypted, original_data, "Encrypted data should be different from original data");
+    assert_ne!(
+        encrypted, original_data,
+        "Encrypted data should be different from original data"
+    );
 
     // Decrypt data
     let decrypted = decrypt_data(&encrypted, &key)?;
 
     // Verify decrypted data matches original data
-    assert_eq!(decrypted, original_data, "Decrypted data should match original data");
+    assert_eq!(
+        decrypted, original_data,
+        "Decrypted data should match original data"
+    );
 
     Ok(())
 }
@@ -69,13 +79,19 @@ fn test_chacha20poly1305_encryption_decryption() -> Result<()> {
     let encrypted = encrypt_data(original_data, &key, algorithm)?;
 
     // Verify encrypted data is different from original data
-    assert_ne!(encrypted, original_data, "Encrypted data should be different from original data");
+    assert_ne!(
+        encrypted, original_data,
+        "Encrypted data should be different from original data"
+    );
 
     // Decrypt data
     let decrypted = decrypt_data(&encrypted, &key)?;
 
     // Verify decrypted data matches original data
-    assert_eq!(decrypted, original_data, "Decrypted data should match original data");
+    assert_eq!(
+        decrypted, original_data,
+        "Decrypted data should match original data"
+    );
 
     Ok(())
 }
@@ -95,7 +111,10 @@ fn test_wrong_key_decryption() -> Result<()> {
     let wrong_key = generate_key(32);
 
     // Ensure keys are different
-    assert_ne!(correct_key, wrong_key, "Correct key and wrong key should be different");
+    assert_ne!(
+        correct_key, wrong_key,
+        "Correct key and wrong key should be different"
+    );
 
     // Encrypt data
     let encrypted = encrypt_data(original_data, &correct_key, algorithm)?;
@@ -104,7 +123,10 @@ fn test_wrong_key_decryption() -> Result<()> {
     let decryption_result = decrypt_data(&encrypted, &wrong_key);
 
     // Verify decryption fails
-    assert!(decryption_result.is_err(), "Decryption with wrong key should fail");
+    assert!(
+        decryption_result.is_err(),
+        "Decryption with wrong key should fail"
+    );
 
     Ok(())
 }
@@ -133,14 +155,20 @@ fn test_file_encryption_decryption() -> Result<()> {
     // Verify encrypted file is created and different from original file
     assert!(encrypted_path.exists(), "Encrypted file should exist");
     let encrypted_data = fs::read(encrypted_path)?;
-    assert_ne!(encrypted_data, test_data, "Encrypted file content should be different from original data");
+    assert_ne!(
+        encrypted_data, test_data,
+        "Encrypted file content should be different from original data"
+    );
 
     // Decrypt file
     decrypt_file(encrypted_path, decrypted_path, key_path)?;
 
     // Verify decrypted file content matches original data
     let decrypted_data = fs::read(decrypted_path)?;
-    assert_eq!(decrypted_data, test_data, "Decrypted file content should match original data");
+    assert_eq!(
+        decrypted_data, test_data,
+        "Decrypted file content should match original data"
+    );
 
     // Clean up
     fs::remove_file(input_path)?;
@@ -167,7 +195,10 @@ fn test_wasm_file_encryption_decryption() -> Result<()> {
     save_key(&key, key_path)?;
 
     // Ensure original WASM file exists
-    assert!(original_wasm_path.exists(), "Test requires sample WASM file");
+    assert!(
+        original_wasm_path.exists(),
+        "Test requires sample WASM file"
+    );
 
     // Try to parse original WASM file
     let original_module = load_module(original_wasm_path)?;

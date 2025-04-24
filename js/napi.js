@@ -137,7 +137,10 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { obfuscateWasm, ObfuscationLevel } = nativeBinding
+const { obfuscateWasm, obfuscateWasmOnly, getVersion, ObfuscationLevel, EncryptionAlgorithm } = nativeBinding
 
 module.exports.obfuscateWasm = obfuscateWasm
-module.exports.ObfuscationLevel = ObfuscationLevel 
+module.exports.obfuscateWasmOnly = obfuscateWasmOnly
+module.exports.getVersion = getVersion
+module.exports.ObfuscationLevel = ObfuscationLevel
+module.exports.EncryptionAlgorithm = EncryptionAlgorithm 

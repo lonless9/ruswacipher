@@ -1,4 +1,4 @@
-import { obfuscateWasm as nativeObfuscateWasm, ObfuscationLevel, EncryptionAlgorithm } from '../napi';
+import { obfuscateWasm as nativeObfuscateWasm, obfuscateWasmOnly as nativeObfuscateWasmOnly, ObfuscationLevel, EncryptionAlgorithm } from '../napi';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -89,6 +89,65 @@ export function obfuscateWasmFile(
 }
 
 /**
+ * Obfuscate a WebAssembly file without encryption
+ * 
+ * @param inputPath Input WebAssembly file path
+ * @param options Obfuscation options (without encryption)
+ * @returns Path to the obfuscated file
+ */
+export function obfuscateWasmFileOnly(
+  inputPath: string,
+  options: ObfuscateWasmOnlyOptions = {}
+): string {
+  const {
+    level = WasmObfuscationLevel.Medium,
+    preserveOriginal = false,
+    outputPath
+  } = options;
+  
+  // Verify input file exists
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Input file not found: ${inputPath}`);
+  }
+  
+  // Determine output file path
+  const resolvedOutputPath = outputPath || `${inputPath}.obfuscated`;
+  
+  // Call Native method for obfuscation only (no encryption)
+  nativeObfuscateWasmOnly(inputPath, resolvedOutputPath, Number(level));
+  
+  // Delete original file if not preserving
+  if (!preserveOriginal && inputPath !== resolvedOutputPath) {
+    fs.unlinkSync(inputPath);
+  }
+  
+  return resolvedOutputPath;
+}
+
+/**
+ * Options for WebAssembly file obfuscation without encryption
+ */
+export interface ObfuscateWasmOnlyOptions {
+  /**
+   * Obfuscation level
+   * @default WasmObfuscationLevel.Medium
+   */
+  level?: WasmObfuscationLevel;
+  
+  /**
+   * Whether to preserve the original file after processing
+   * @default false
+   */
+  preserveOriginal?: boolean;
+  
+  /**
+   * Custom output file path
+   * If not provided, defaults to adding .obfuscated to the original filename
+   */
+  outputPath?: string;
+}
+
+/**
  * Obfuscate WebAssembly binary data
  * 
  * @param wasmBuffer Input WebAssembly binary data
@@ -114,6 +173,48 @@ export function obfuscateWasmBuffer(
     
     // Call obfuscation, passing encryption algorithm
     nativeObfuscateWasm(tempInputPath, tempOutputPath, Number(level), algorithm);
+    
+    // Read output
+    return fs.readFileSync(tempOutputPath);
+  } finally {
+    // Clean up temporary files
+    try {
+      if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+      
+      // Try to delete temporary directory
+      const tempDir = path.dirname(tempInputPath);
+      fs.rmdirSync(tempDir);
+    } catch (err) {
+      // Ignore cleanup errors
+    }
+  }
+}
+
+/**
+ * Obfuscate WebAssembly binary data without encryption
+ * 
+ * @param wasmBuffer Input WebAssembly binary data
+ * @param level Obfuscation level
+ * @returns Obfuscated WebAssembly binary data
+ */
+export function obfuscateWasmBufferOnly(
+  wasmBuffer: Buffer,
+  level: WasmObfuscationLevel = WasmObfuscationLevel.Medium
+): Buffer {
+  // Create temporary file
+  const tempInputPath = path.join(
+    fs.mkdtempSync('ruswacipher-'),
+    'input.wasm'
+  );
+  const tempOutputPath = `${tempInputPath}.obfuscated`;
+  
+  try {
+    // Write to temporary input file
+    fs.writeFileSync(tempInputPath, wasmBuffer);
+    
+    // Call obfuscation only (no encryption)
+    nativeObfuscateWasmOnly(tempInputPath, tempOutputPath, Number(level));
     
     // Read output
     return fs.readFileSync(tempOutputPath);

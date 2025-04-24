@@ -1,11 +1,12 @@
-use std::path::Path;
-use tempfile::tempdir;
-use std::sync::Once;
 use env_logger::Env;
+use std::path::Path;
+use std::sync::Once;
+use tempfile::tempdir;
 
 use ruswacipher::obfuscation::{
     add_dead_code, find_virtualizable_functions, obfuscate_control_flow, obfuscate_wasm,
-    rename_locals, split_large_functions, virtualize_functions, ObfuscationLevel,
+    obfuscate_wasm_only, rename_locals, split_large_functions, virtualize_functions,
+    ObfuscationLevel,
 };
 use ruswacipher::wasm::parser::{parse_file, parse_wasm, serialize_wasm};
 use ruswacipher::wasm::structure::WasmModule;
@@ -50,7 +51,7 @@ fn test_basic_obfuscation() {
 
     // Parse obfuscated file and verify its format is valid
     let module = parse_file(&decrypted_file).unwrap();
-    assert!(module.sections.len() > 0);
+    assert!(!module.sections.is_empty());
 }
 
 #[test]
@@ -76,7 +77,7 @@ fn test_medium_obfuscation() {
 
     // Parse obfuscated file and verify its format is valid
     let module = parse_file(&decrypted_file).unwrap();
-    assert!(module.sections.len() > 0);
+    assert!(!module.sections.is_empty());
 }
 
 #[test]
@@ -102,7 +103,7 @@ fn test_high_obfuscation() {
 
     // Parse obfuscated file and verify its format is valid
     let module = parse_file(&decrypted_file).unwrap();
-    assert!(module.sections.len() > 0);
+    assert!(!module.sections.is_empty());
 }
 
 #[test]
@@ -117,7 +118,7 @@ fn test_variable_renaming() {
     let obfuscated_module = rename_locals(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -151,7 +152,7 @@ fn test_dead_code_insertion() {
     let obfuscated_module = add_dead_code(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -189,7 +190,7 @@ fn test_control_flow_obfuscation() {
     let obfuscated_module = obfuscate_control_flow(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -215,7 +216,7 @@ fn test_function_splitting() {
     let obfuscated_module = split_large_functions(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -266,7 +267,7 @@ fn test_virtualization() {
     let obfuscated_module = virtualize_functions(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -275,7 +276,7 @@ fn test_virtualization() {
     println!("Debug: Serialized WASM size: {} bytes", wasm_bytes.len());
 
     // Check if wasm_bytes is valid
-    if wasm_bytes.len() > 0 {
+    if !wasm_bytes.is_empty() {
         println!(
             "Debug: First few bytes: {:?}",
             &wasm_bytes[..std::cmp::min(10, wasm_bytes.len())]
@@ -327,7 +328,7 @@ fn test_obfuscation_chain() {
     let obfuscated_module = virtualize_functions(parse_wasm(&bytes4).unwrap()).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Serialize and ensure it can be reparsed
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -345,4 +346,85 @@ fn test_obfuscation_chain() {
         .iter()
         .any(|section| section.section_type == ruswacipher::wasm::structure::SectionType::Code);
     assert!(has_code_section);
+}
+
+#[test]
+fn test_obfuscation_only() {
+    // 初始化日志
+    setup();
+
+    // Create temporary directory
+    let temp_dir = tempdir().unwrap();
+    let input_file = Path::new("tests/samples/simple.wasm");
+    let output_file = temp_dir.path().join("obfuscated_only.wasm");
+
+    // Apply obfuscation without encryption
+    obfuscate_wasm_only(input_file, &output_file, ObfuscationLevel::Medium).unwrap();
+
+    // Verify output file exists
+    assert!(output_file.exists());
+
+    // Direct parse obfuscated file (no decryption)
+    let module = parse_file(&output_file).unwrap();
+    assert!(!module.sections.is_empty());
+
+    // Verify file format is valid
+    let code_section_exists = module
+        .sections
+        .iter()
+        .any(|section| section.section_type == ruswacipher::wasm::structure::SectionType::Code);
+    assert!(
+        code_section_exists,
+        "Code section should exist in obfuscated WASM"
+    );
+}
+
+#[test]
+fn test_obfuscation_pipeline() {
+    // Initialize logger
+    setup();
+
+    // Create temporary directory
+    let temp_dir = tempdir().unwrap();
+    let input_file = Path::new("tests/samples/simple.wasm");
+    let obfuscated_file = temp_dir.path().join("obfuscated_only.wasm");
+    let encrypted_file = temp_dir.path().join("obfuscated_encrypted.wasm");
+
+    // Step 1: Obfuscation
+    // Use direct module parsing and obfuscation
+    let wasm_data = std::fs::read(input_file).unwrap();
+    let module = parse_wasm(&wasm_data).unwrap();
+    let obfuscated_module =
+        ruswacipher::obfuscation::obfuscate(module, ObfuscationLevel::Medium).unwrap();
+    let obfuscated_data = serialize_wasm(&obfuscated_module).unwrap();
+    std::fs::write(&obfuscated_file, &obfuscated_data).unwrap();
+    assert!(obfuscated_file.exists());
+
+    // Step 2: Encrypt - Generate key and save
+    let key = ruswacipher::crypto::engine::generate_key(32);
+    let key_file = temp_dir.path().join("encryption.key");
+    ruswacipher::crypto::engine::save_key(&key, &key_file).unwrap();
+
+    // Step 2: Encrypt - Use key to encrypt obfuscated file
+    let obfuscated_data = std::fs::read(&obfuscated_file).unwrap();
+    let encrypted_data =
+        ruswacipher::crypto::engine::encrypt_data(&obfuscated_data, &key, "aes-gcm").unwrap();
+    std::fs::write(&encrypted_file, &encrypted_data).unwrap();
+    assert!(encrypted_file.exists());
+
+    // Step 3: Decrypt - Decrypt and verify
+    let decrypted_file = temp_dir.path().join("decrypted_pipeline.wasm");
+    ruswacipher::crypto::decrypt_file(&encrypted_file, &decrypted_file, &key_file).unwrap();
+
+    // Verify decrypted file can be parsed
+    let module = parse_file(&decrypted_file).unwrap();
+    assert!(!module.sections.is_empty());
+
+    // Compare decrypted file with obfuscated file
+    let obfuscated_data = std::fs::read(&obfuscated_file).unwrap();
+    let decrypted_data = std::fs::read(&decrypted_file).unwrap();
+    assert_eq!(
+        obfuscated_data, decrypted_data,
+        "Decrypted data should match obfuscated data"
+    );
 }

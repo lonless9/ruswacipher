@@ -46,17 +46,8 @@ fn encrypt(opts: commands::EncryptOpts) -> Result<()> {
 
 /// Execute encryption with obfuscation
 fn encrypt_with_obfuscation(opts: commands::EncryptOpts) -> Result<()> {
-    // Create temporary file
+    // Create temp file to store obfuscated data
     let temp_output = create_temp_output(&opts.input, &opts.output)?;
-
-    // Encrypt to temporary file
-    crypto::encrypt_file(
-        &opts.input,
-        &temp_output,
-        opts.key_file.as_deref(),
-        &opts.algorithm,
-    )
-    .with_context(|| "Failed to encrypt WASM file")?;
 
     // Apply obfuscation
     info!("Applying code obfuscation...");
@@ -67,14 +58,24 @@ fn encrypt_with_obfuscation(opts: commands::EncryptOpts) -> Result<()> {
         obfuscation::get_level_description(level)
     );
 
-    obfuscation::obfuscate_wasm(&temp_output, &opts.output, level, Some(&opts.algorithm))
+    // Obfuscate original WASM file and write to temp file (no encryption)
+    obfuscation::obfuscate_wasm_only(&opts.input, &temp_output, level)
         .with_context(|| "Failed to obfuscate WASM file")?;
 
-    // Clean up temporary file
+    // Encrypt obfuscated WASM file
+    crypto::encrypt_file(
+        &temp_output,
+        &opts.output,
+        opts.key_file.as_deref(),
+        &opts.algorithm,
+    )
+    .with_context(|| "Failed to encrypt obfuscated WASM file")?;
+
+    // Clean up temp file
     std::fs::remove_file(&temp_output)
         .with_context(|| format!("Failed to delete temporary file: {}", temp_output.display()))?;
 
-    info!("Encryption and obfuscation completed!");
+    info!("Obfuscation and encryption completed!");
     Ok(())
 }
 

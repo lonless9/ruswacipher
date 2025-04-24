@@ -4,9 +4,10 @@ use std::path::Path;
 use std::time::Instant;
 use tempfile::tempdir;
 
+use ruswacipher::crypto;
 use ruswacipher::obfuscation::{
-    add_dead_code, obfuscate_control_flow, obfuscate_wasm, rename_locals, split_large_functions,
-    virtualize_functions, ObfuscationLevel,
+    self, add_dead_code, obfuscate_control_flow, obfuscate_wasm, rename_locals,
+    split_large_functions, virtualize_functions, ObfuscationLevel,
 };
 use ruswacipher::wasm::parser::{parse_file, parse_wasm, serialize_wasm};
 use ruswacipher::wasm::structure::{SectionType, WasmModule};
@@ -221,5 +222,95 @@ fn test_comprehensive_obfuscation() -> Result<()> {
     }
 
     println!("\nComprehensive security obfuscation test completed!");
+    Ok(())
+}
+
+/// Add a new test function to test the correct obfuscation and encryption pipeline
+#[test]
+fn test_correct_obfuscation_encryption_pipeline() -> Result<()> {
+    println!("Testing the correct obfuscation and encryption pipeline...");
+
+    // Create temporary directory
+    let temp_dir = tempdir()?;
+    let input_file = Path::new("tests/samples/simple.wasm");
+    let obfuscated_file = temp_dir.path().join("obfuscated.wasm");
+    let encrypted_file = temp_dir.path().join("encrypted.wasm");
+
+    // Verify input file exists
+    assert!(input_file.exists(), "Test sample file does not exist");
+
+    // Load original WASM
+    println!("Loading original WASM file...");
+    let original_wasm = fs::read(input_file)?;
+    let original_module = parse_wasm(&original_wasm)?;
+    analyze_module(&original_module, "Original Module");
+
+    // Step 1: Applying obfuscation
+    println!("Step 1: Applying obfuscation...");
+    // Use direct module parsing to apply obfuscation
+    let wasm_data = fs::read(input_file)?;
+    let module = parse_wasm(&wasm_data)?;
+    let obfuscated_module = obfuscation::obfuscate(module, ObfuscationLevel::High)?;
+    let obfuscated_data = serialize_wasm(&obfuscated_module)?;
+    fs::write(&obfuscated_file, &obfuscated_data)?;
+
+    // Verify obfuscated file
+    let obfuscated_module = parse_file(&obfuscated_file)?;
+    analyze_module(&obfuscated_module, "After Obfuscation");
+
+    // Step 2: Encrypting obfuscated file
+    println!("Step 2: Encrypting obfuscated file...");
+
+    // Generate random key and save to temporary file
+    let key = crypto::engine::generate_key(32);
+    let key_file_path = temp_dir.path().join("encryption.key");
+    crypto::engine::save_key(&key, &key_file_path)?;
+
+    // Encrypt obfuscated file using key
+    let obfuscated_data = fs::read(&obfuscated_file)?;
+    let encrypted_data = crypto::engine::encrypt_data(&obfuscated_data, &key, "aes-gcm")?;
+    fs::write(&encrypted_file, &encrypted_data)?;
+
+    // Verify encrypted file exists
+    assert!(encrypted_file.exists(), "Encrypted file does not exist");
+    println!(
+        "File size after encryption: {} bytes",
+        fs::metadata(&encrypted_file)?.len()
+    );
+
+    // Step 3: Decrypting file
+    println!("Step 3: Decrypting file...");
+    let decrypted_file = temp_dir.path().join("decrypted.wasm");
+    crypto::decrypt_file(&encrypted_file, &decrypted_file, &key_file_path)?;
+
+    // Verify decrypted file
+    let decrypted_module = parse_file(&decrypted_file)?;
+    analyze_module(&decrypted_module, "After Decryption");
+
+    // Verify decrypted file matches obfuscated file
+    let obfuscated_data = fs::read(&obfuscated_file)?;
+    let decrypted_data = fs::read(&decrypted_file)?;
+    assert_eq!(
+        obfuscated_data, decrypted_data,
+        "Decrypted data should match obfuscated data"
+    );
+
+    // Verify decrypted file is a valid WASM module
+    assert!(
+        decrypted_module
+            .sections
+            .iter()
+            .any(|s| s.section_type == SectionType::Code),
+        "Code section missing after pipeline"
+    );
+    assert!(
+        decrypted_module
+            .sections
+            .iter()
+            .any(|s| s.section_type == SectionType::Export),
+        "Export section missing after pipeline"
+    );
+
+    println!("Correct obfuscation and encryption pipeline test completed!");
     Ok(())
 }

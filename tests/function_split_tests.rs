@@ -91,7 +91,11 @@ fn test_simple_function_splitting() {
 
     // Execute function splitting
     let result = split_large_functions(module);
-    assert!(result.is_ok(), "Function splitting failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Function splitting failed: {:?}",
+        result.err()
+    );
 
     let obfuscated = result.unwrap();
     let (new_funcs, new_size) = count_functions_and_size(&obfuscated);
@@ -99,7 +103,10 @@ fn test_simple_function_splitting() {
         "Obfuscated simple module: {} functions, code size: {}",
         new_funcs, new_size
     );
-    println!("Simple module function change: {} -> {}", orig_funcs, new_funcs);
+    println!(
+        "Simple module function change: {} -> {}",
+        orig_funcs, new_funcs
+    );
 
     // Simple module might be too small to be split, so no assertions here
 
@@ -139,7 +146,11 @@ fn test_complex_function_splitting() {
 
     // Execute function splitting
     let result = split_large_functions(module);
-    assert!(result.is_ok(), "Function splitting failed: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Function splitting failed: {:?}",
+        result.err()
+    );
 
     let obfuscated = result.unwrap();
     let (new_funcs, new_size) = count_functions_and_size(&obfuscated);
@@ -147,11 +158,17 @@ fn test_complex_function_splitting() {
         "Obfuscated complex module: {} functions, code size: {}",
         new_funcs, new_size
     );
-    println!("Complex module function change: {} -> {}", orig_funcs, new_funcs);
+    println!(
+        "Complex module function change: {} -> {}",
+        orig_funcs, new_funcs
+    );
 
     // Complex module should contain splittable large functions
     // We added a large splittable function, so at least one function should be split
-    assert!(new_funcs > orig_funcs, "Function splitting did not increase function count");
+    assert!(
+        new_funcs > orig_funcs,
+        "Function splitting did not increase function count"
+    );
 
     // Write obfuscated WASM to file for inspection
     let obfuscated_wasm_path = Path::new("tests/samples/complex_obfuscated.wasm");

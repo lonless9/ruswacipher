@@ -570,7 +570,7 @@ fn test_wasm_encryption_with_js_runtime() -> Result<()> {
 </html>"###;
 
     // Replace key placeholder
-    let test_html = test_html.replace("KEY_PLACEHOLDER", &key_base64);
+    let test_html = test_html.replace("KEY_PLACEHOLDER", key_base64);
 
     fs::write(&test_html_path, test_html)?;
 

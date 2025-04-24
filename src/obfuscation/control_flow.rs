@@ -88,24 +88,15 @@ fn generate_dead_code(_rng: &mut impl Rng) -> Vec<u8> {
     // 2. Place some instructions inside the block
     // 3. End the block
 
-    let mut dead_code = Vec::new();
-
     // Create an if block with a condition that is always false
-    // i32.const 0 (push 0 onto stack)
-    dead_code.push(0x41);
-    dead_code.push(0x00);
-
-    // if block start (type: void)
-    dead_code.push(0x04);
-    dead_code.push(0x40);
-
-    // Simple nop instructions, do not affect the stack
-    dead_code.push(0x01); // nop
-    dead_code.push(0x01); // nop
-    dead_code.push(0x01); // nop
-
-    // End the if block
-    dead_code.push(0x0B);
+    // i32.const 0 (push 0 onto stack), if block start (type: void),
+    // Simple nop instructions that do not affect the stack, end the if block
+    let dead_code = vec![
+        0x41, 0x00, // i32.const 0 (push 0 onto stack)
+        0x04, 0x40, // if block start (type: void)
+        0x01, 0x01, 0x01, // nop instructions
+        0x0B, // End the if block
+    ];
 
     dead_code
 }
@@ -317,9 +308,7 @@ pub fn add_dead_code(module: WasmModule) -> Result<WasmModule> {
 
                 // Add a nop sequence at the beginning of the function body as dead code
                 // A simple nop sequence does not affect program execution, just increases code size
-                for _ in 0..5 {
-                    new_function_body.push(0x01); // nop
-                }
+                new_function_body.extend_from_slice(&[0x01; 5]); // 5 nop instructions
 
                 // Add the original instruction sequence
                 new_function_body.extend_from_slice(&function_data[header_end..]);

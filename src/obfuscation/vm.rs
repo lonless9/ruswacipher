@@ -79,8 +79,8 @@ pub fn generate_obfuscated_opcode_map() -> [u8; 256] {
     let mut map = [0u8; 256];
 
     // Initialize as sequential mapping
-    for i in 0..256 {
-        map[i] = i as u8;
+    for (i, byte) in map.iter_mut().enumerate() {
+        *byte = i as u8;
     }
 
     // Fisher-Yates shuffle algorithm
@@ -207,7 +207,7 @@ impl VMInterpreter {
                 }
             }
             VMOpcode::Pop => {
-                if let Some(_) = self.state.stack.pop() {
+                if self.state.stack.pop().is_some() {
                     // Value popped
                 }
             }
@@ -384,8 +384,8 @@ pub fn initialize_vm_stack(size: usize) -> Result<Vec<i32>> {
     let mut rng = rand::rng();
 
     // 随机填充栈底几个元素，增加混淆
-    for i in 0..4 {
-        stack[i] = rng.random_range(-1000..1000);
+    for value in stack.iter_mut().take(4) {
+        *value = rng.random_range(-1000..1000);
     }
 
     Ok(stack)

@@ -2,7 +2,7 @@
 extern crate napi_derive;
 
 use napi::bindgen_prelude::*;
-use ruswacipher::obfuscation::{obfuscate_wasm as wasm_obfuscate, ObfuscationLevel};
+use ruswacipher::obfuscation::{obfuscate_and_encrypt_wasm as wasm_obfuscate_encrypt, obfuscate_wasm_only as wasm_obfuscate, ObfuscationLevel};
 use std::path::Path;
 
 /// WebAssembly Obfuscation Level (Node.js Binding)
@@ -46,9 +46,13 @@ fn algorithm_to_string(algorithm: EncryptionAlgorithm) -> &'static str {
   }
 }
 
-/// Obfuscate WebAssembly file
+/// Obfuscate and encrypt WebAssembly file
 ///
-/// Use RusWaCipher to obfuscate and protect WebAssembly binary files
+/// Uses RusWaCipher to obfuscate and encrypt WebAssembly binary files
+/// This function performs a combined operation:
+/// 1. Obfuscates the WebAssembly code
+/// 2. Encrypts the obfuscated code with the specified algorithm
+/// 3. Generates a key file with the same name as the output file but with ".key" extension
 ///
 /// @param input_path - Input file path
 /// @param output_path - Output file path
@@ -80,11 +84,11 @@ pub fn obfuscate_wasm(
   };
 
   // Call Rust library function, passing algorithm parameter
-  match wasm_obfuscate(input, output, level.into(), Some(algorithm_str)) {
+  match wasm_obfuscate_encrypt(input, output, level.into(), Some(algorithm_str)) {
     Ok(_) => Ok(true),
     Err(e) => Err(Error::new(
       Status::GenericFailure,
-      format!("Failed to obfuscate WASM: {}", e),
+      format!("Failed to obfuscate and encrypt WASM: {}", e),
     )),
   }
 }
@@ -93,4 +97,40 @@ pub fn obfuscate_wasm(
 #[napi]
 pub fn get_version() -> String {
   env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// Obfuscate WebAssembly file without encryption
+///
+/// Uses RusWaCipher to obfuscate WebAssembly binary files without applying encryption
+/// This function only obfuscates the code without any encryption
+///
+/// @param input_path - Input file path
+/// @param output_path - Output file path
+/// @param level - Obfuscation level
+/// @returns Success status
+#[napi]
+pub fn obfuscate_wasm_only(
+  input_path: String,
+  output_path: String,
+  level: ObfuscationLevel,
+) -> Result<bool> {
+  let input = Path::new(&input_path);
+  let output = Path::new(&output_path);
+
+  // Check if input file exists
+  if !input.exists() {
+    return Err(Error::new(
+      Status::InvalidArg,
+      format!("Input file does not exist: {}", input_path),
+    ));
+  }
+
+  // Call Rust library function for obfuscation only
+  match wasm_obfuscate(input, output, level.into()) {
+    Ok(_) => Ok(true),
+    Err(e) => Err(Error::new(
+      Status::GenericFailure,
+      format!("Failed to obfuscate WASM: {}", e),
+    )),
+  }
 } 

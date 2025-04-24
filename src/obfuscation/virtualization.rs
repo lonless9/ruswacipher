@@ -447,7 +447,7 @@ fn encrypt_vm_bytecode(vm_bytecode: &[u8], vm_metadata: &[u8]) -> Result<Vec<u8>
         rng.random::<u8>(),
         rng.random::<u8>(),
     ];
-    hasher.update(&salt);
+    hasher.update(salt);
 
     // The salt value will be added to the beginning of the encrypted bytecode
     encrypted_bytecode.extend_from_slice(&salt);
@@ -458,8 +458,8 @@ fn encrypt_vm_bytecode(vm_bytecode: &[u8], vm_metadata: &[u8]) -> Result<Vec<u8>
         key_stream.extend_from_slice(&hash_result);
 
         // Update the hash to generate the next key stream block
-        hasher.update(&hash_result);
-        hasher.update(&[chunk.len() as u8]);
+        hasher.update(hash_result);
+        hasher.update([chunk.len() as u8]);
         hash_result = hasher.finalize_reset();
     }
 
@@ -476,12 +476,12 @@ fn encrypt_vm_bytecode(vm_bytecode: &[u8], vm_metadata: &[u8]) -> Result<Vec<u8>
         // 2. Byte substitution (simple substitution)
         encrypted_byte = match encrypted_byte & 0x0F {
             0x00 => (encrypted_byte & 0xF0) | 0x0F,
-            0x0F => (encrypted_byte & 0xF0) | 0x00,
+            0x0F => encrypted_byte & 0xF0,
             _ => encrypted_byte,
         };
 
         // 3. Byte rotation (left shift 4 bits)
-        encrypted_byte = (encrypted_byte << 4) | (encrypted_byte >> 4);
+        encrypted_byte = encrypted_byte.rotate_right(4);
 
         encrypted_bytecode.push(encrypted_byte);
     }

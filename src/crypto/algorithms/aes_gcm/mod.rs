@@ -9,6 +9,12 @@ use rand::Rng;
 /// AES-GCM encryption plugin implementation
 pub struct AesGcmPlugin;
 
+impl Default for AesGcmPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AesGcmPlugin {
     /// Create new AES-GCM plugin instance
     pub fn new() -> Self {

@@ -1,8 +1,8 @@
+use crate::obfuscation::ObfuscationLevel;
 use crate::obfuscation::{
     add_dead_code, obfuscate_control_flow, rename_locals, split_large_functions,
     virtualize_functions,
 };
-use crate::obfuscation::ObfuscationLevel;
 use crate::wasm::structure::WasmModule;
 use anyhow::Result;
 use log::{debug, info};

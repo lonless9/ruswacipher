@@ -72,22 +72,57 @@ pub fn apply_default_obfuscation(
     result
 }
 
-/// Apply obfuscation to a WASM module with optional encryption algorithm
+/// Obfuscate a WASM file without encryption (new function)
 ///
 /// # Parameters
 ///
 /// * `input_file` - Path to the input WASM file
 /// * `output_file` - Path to the output obfuscated WASM file
 /// * `level` - Obfuscation level to apply
+pub fn obfuscate_wasm_only(
+    input_file: &Path,
+    output_file: &Path,
+    level: ObfuscationLevel,
+) -> Result<()> {
+    info!(
+        "Starting WASM file obfuscation only (without encryption): {} -> {}",
+        input_file.display(),
+        output_file.display()
+    );
+
+    // 1. Parse WASM file
+    let wasm_data = std::fs::read(input_file)?;
+    let module = wasm::parser::parse_wasm(&wasm_data)?;
+
+    // 2. Apply obfuscation
+    let obfuscated_module = obfuscate(module, level)?;
+
+    // 3. Serialize back to binary
+    let obfuscated_data = wasm::parser::serialize_wasm(&obfuscated_module)?;
+
+    // 4. Write to output file
+    std::fs::write(output_file, &obfuscated_data)?;
+
+    info!("WASM file obfuscation completed (no encryption applied)");
+    Ok(())
+}
+
+/// Obfuscate a WASM file and encrypt the result (renamed from previous obfuscate_wasm)
+///
+/// # Parameters
+///
+/// * `input_file` - Path to the input WASM file
+/// * `output_file` - Path to the output obfuscated and encrypted WASM file
+/// * `level` - Obfuscation level to apply
 /// * `algorithm` - Optional encryption algorithm to use (defaults to "aes-gcm" if None)
-pub fn obfuscate_wasm(
+pub fn obfuscate_and_encrypt_wasm(
     input_file: &Path,
     output_file: &Path,
     level: ObfuscationLevel,
     algorithm: Option<&str>,
 ) -> Result<()> {
     info!(
-        "Starting WASM file obfuscation: {} -> {}",
+        "Starting WASM file obfuscation and encryption: {} -> {}",
         input_file.display(),
         output_file.display()
     );
@@ -122,6 +157,23 @@ pub fn obfuscate_wasm(
 
     info!("WASM file obfuscation and encryption completed");
     Ok(())
+}
+
+/// For backward compatibility - calls obfuscate_and_encrypt_wasm
+///
+/// # Parameters
+///
+/// * `input_file` - Path to the input WASM file
+/// * `output_file` - Path to the output obfuscated and encrypted WASM file
+/// * `level` - Obfuscation level to apply
+/// * `algorithm` - Optional encryption algorithm to use (defaults to "aes-gcm" if None)
+pub fn obfuscate_wasm(
+    input_file: &Path,
+    output_file: &Path,
+    level: ObfuscationLevel,
+    algorithm: Option<&str>,
+) -> Result<()> {
+    obfuscate_and_encrypt_wasm(input_file, output_file, level, algorithm)
 }
 
 /// Get description for specified obfuscation level

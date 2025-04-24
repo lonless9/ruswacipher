@@ -80,42 +80,40 @@ pub fn encrypt_data(data: &[u8], key: &[u8], algorithm: &str) -> Result<Vec<u8>>
 
     // For AES-GCM algorithm, nonce is in the first 12 bytes
     // For ChaCha20Poly1305 algorithm, nonce is in the first 12 bytes
-    if algorithm == "aes-gcm" || algorithm == "chacha20poly1305" {
-        if encrypted.len() >= 12 {
-            // Add nonce to header
-            let nonce = &encrypted[..12];
-            let nonce_values: Vec<u8> = nonce.to_vec();
-            header_map.insert(
-                "nonce".to_string(),
-                serde_json::Value::Array(
-                    nonce_values
-                        .into_iter()
-                        .map(|b| serde_json::Value::Number(serde_json::Number::from(b)))
-                        .collect(),
-                ),
-            );
+    if (algorithm == "aes-gcm" || algorithm == "chacha20poly1305") && encrypted.len() >= 12 {
+        // Add nonce to header
+        let nonce = &encrypted[..12];
+        let nonce_values: Vec<u8> = nonce.to_vec();
+        header_map.insert(
+            "nonce".to_string(),
+            serde_json::Value::Array(
+                nonce_values
+                    .into_iter()
+                    .map(|b| serde_json::Value::Number(serde_json::Number::from(b)))
+                    .collect(),
+            ),
+        );
 
-            // Generate JSON header
-            let header_json = serde_json::Value::Object(header_map);
-            let header_string = serde_json::to_string(&header_json)?;
-            let header_bytes = header_string.as_bytes();
+        // Generate JSON header
+        let header_json = serde_json::Value::Object(header_map);
+        let header_string = serde_json::to_string(&header_json)?;
+        let header_bytes = header_string.as_bytes();
 
-            // Create new output format:
-            // 4-byte header length + JSON header + encrypted data (excluding first 12 bytes nonce as it's already in header)
-            let mut result = Vec::new();
+        // Create new output format:
+        // 4-byte header length + JSON header + encrypted data (excluding first 12 bytes nonce as it's already in header)
+        let mut result = Vec::new();
 
-            // Write 4-byte header length (little endian)
-            let header_len = header_bytes.len() as u32;
-            result.extend_from_slice(&header_len.to_le_bytes());
+        // Write 4-byte header length (little endian)
+        let header_len = header_bytes.len() as u32;
+        result.extend_from_slice(&header_len.to_le_bytes());
 
-            // Write header
-            result.extend_from_slice(header_bytes);
+        // Write header
+        result.extend_from_slice(header_bytes);
 
-            // Write encrypted data (skip first 12 bytes nonce as it's already in header)
-            result.extend_from_slice(&encrypted[12..]);
+        // Write encrypted data (skip first 12 bytes nonce as it's already in header)
+        result.extend_from_slice(&encrypted[12..]);
 
-            return Ok(result);
-        }
+        return Ok(result);
     }
 
     // For other algorithms or error cases, use old format

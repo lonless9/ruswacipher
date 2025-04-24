@@ -148,7 +148,7 @@ pub fn remove_custom_section(module: &mut WasmModule, name: &str) -> Result<bool
 
     module.sections.retain(|section| {
         section.section_type != SectionType::Custom
-            || section.name.as_ref().map_or(true, |n| n != name)
+            || section.name.as_ref().is_none_or(|n| n != name)
     });
 
     Ok(original_count != module.sections.len())

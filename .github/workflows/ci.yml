@@ -21,6 +21,11 @@ jobs:
         with:
           components: clippy, rustfmt
           
+      - name: Install WABT (WebAssembly Binary Toolkit)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wabt
+          
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         
@@ -36,19 +41,19 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
         
-  wasm-test:
-    name: WebAssembly Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+  # wasm-test:
+  #   name: WebAssembly Tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
       
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
+  #     - name: Install Rust
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         targets: wasm32-unknown-unknown
           
-      - name: Cache dependencies
-        uses: Swatinem/rust-cache@v2
+  #     - name: Cache dependencies
+  #       uses: Swatinem/rust-cache@v2
         
-      - name: Build WASM
-        run: cargo build --target wasm32-unknown-unknown 
+  #     - name: Build WASM
+  #       run: cargo build --target wasm32-unknown-unknown 

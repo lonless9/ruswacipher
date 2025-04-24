@@ -58,10 +58,16 @@ fn test_find_control_flow_instructions() {
         match opcode {
             0x02 | 0x03 | 0x04 | 0x0D | 0x0E => {
                 // These are the control flow instructions we expect
-                println!("Found control flow instruction at position {} with opcode {:#04x}", pos, opcode);
+                println!(
+                    "Found control flow instruction at position {} with opcode {:#04x}",
+                    pos, opcode
+                );
             }
             _ => {
-                panic!("Found non-control flow instruction at position {} with opcode {:#04x}", pos, opcode);
+                panic!(
+                    "Found non-control flow instruction at position {} with opcode {:#04x}",
+                    pos, opcode
+                );
             }
         }
     }
@@ -79,7 +85,7 @@ fn test_find_function_bodies() {
     let obfuscated_module = add_dead_code(module).unwrap();
 
     // Verify module structure integrity
-    assert!(obfuscated_module.sections.len() > 0);
+    assert!(!obfuscated_module.sections.is_empty());
 
     // Ensure code section exists
     let has_code_section = obfuscated_module
@@ -121,9 +127,15 @@ fn test_dead_code_addition() {
         original_code_size, obfuscated_code_size
     );
     // Restore assertion, as dead code implementation is completed
-    assert!(obfuscated_code_size > original_code_size, "Dead code insertion should increase code section size");
+    assert!(
+        obfuscated_code_size > original_code_size,
+        "Dead code insertion should increase code section size"
+    );
     // Temporary test: Ensure code section size does not decrease
-    assert!(obfuscated_code_size >= original_code_size, "Code section should not shrink");
+    assert!(
+        obfuscated_code_size >= original_code_size,
+        "Code section should not shrink"
+    );
 
     // Verify module is still valid WebAssembly
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();
@@ -136,7 +148,8 @@ fn test_control_flow_obfuscation() {
     let module = get_test_wasm();
 
     // Get original control flow instruction count
-    let original_code_section = get_code_section_data(&module).expect("Code section does not exist");
+    let original_code_section =
+        get_code_section_data(&module).expect("Code section does not exist");
     let original_control_flow_count = find_control_flow_instructions(original_code_section).len();
 
     // Apply control flow obfuscation
@@ -191,9 +204,15 @@ fn test_combined_control_flow_obfuscation() {
         original_code_size, obfuscated_code_size
     );
     // Restore assertion, as control flow obfuscation implementation is completed
-    assert!(obfuscated_code_size > original_code_size, "Control flow obfuscation should increase code section size");
+    assert!(
+        obfuscated_code_size > original_code_size,
+        "Control flow obfuscation should increase code section size"
+    );
     // Temporary test: Ensure code section size does not decrease
-    assert!(obfuscated_code_size >= original_code_size, "Code section should not shrink");
+    assert!(
+        obfuscated_code_size >= original_code_size,
+        "Code section should not shrink"
+    );
 
     // Verify the module is still valid WebAssembly
     let wasm_bytes = serialize_wasm(&obfuscated_module).unwrap();

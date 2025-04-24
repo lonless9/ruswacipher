@@ -395,7 +395,7 @@ fn find_large_functions(
                 let safe_points = find_safe_split_points(func_body);
 
                 // Modify: As long as there is at least 1 safe split point, it can be split
-                if safe_points.len() >= 1 {
+                if !safe_points.is_empty() {
                     debug!(
                         "Function {} with size {} has {} safe split points, adding to list",
                         func_idx,

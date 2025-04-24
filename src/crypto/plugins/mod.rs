@@ -113,60 +113,66 @@ pub fn load_custom_plugins() -> Result<()> {
     // Check if directory exists
     let plugin_dir = Path::new(&plugin_path);
     if !plugin_dir.is_dir() {
-        warn!("Plugin directory does not exist or is not a directory: {}", plugin_path);
+        warn!(
+            "Plugin directory does not exist or is not a directory: {}",
+            plugin_path
+        );
         return Ok(()); // Don't return error, as this may be a normal configuration
     }
 
     // List found files for logging purposes
-    for entry in fs::read_dir(plugin_dir)? {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(ext) = path.extension() {
-                    // Look for .so files on Linux, .dll files on Windows, .dylib files on macOS
-                    #[cfg(target_os = "linux")]
-                    let valid_ext = ext == "so";
+    for entry in (fs::read_dir(plugin_dir)?).flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                // Look for .so files on Linux, .dll files on Windows, .dylib files on macOS
+                #[cfg(target_os = "linux")]
+                let valid_ext = ext == "so";
 
-                    #[cfg(target_os = "windows")]
-                    let valid_ext = ext == "dll";
+                #[cfg(target_os = "windows")]
+                let valid_ext = ext == "dll";
 
-                    #[cfg(target_os = "macos")]
-                    let valid_ext = ext == "dylib";
+                #[cfg(target_os = "macos")]
+                let valid_ext = ext == "dylib";
 
-                    if valid_ext {
-                        info!("Found plugin file: {}", path.display());
-                        
-                        // Use libloading to load dynamic library
-                        unsafe {
-                            match libloading::Library::new(path.as_path()) {
-                                Ok(lib) => {
-                                    // Get plugin creation function
-                                    let create_plugin: libloading::Symbol<fn() -> Box<dyn EncryptionPlugin>> = 
-                                        match lib.get(b"create_plugin") {
-                                            Ok(func) => func,
-                                            Err(e) => {
-                                                warn!("Unable to get plugin creation function, skipping plugin: {} - {}", path.display(), e);
-                                                continue;
-                                            }
-                                        };
-                                    
-                                    // Call creation function to get plugin instance
-                                    let plugin = create_plugin();
-                                    let plugin_name = plugin.name().to_string();
-                                    
-                                    info!("Successfully loaded plugin: {} - {}", plugin_name, plugin.description());
-                                    
-                                    // Register plugin
-                                    let mut manager = PLUGIN_MANAGER.lock().unwrap();
-                                    manager.register_plugin(Arc::from(plugin));
-                                    
-                                    // Don't release the library, as the plugin needs to be used continuously
-                                    // Store the library somewhere to prevent it from being dropped (simplified handling here)
-                                    std::mem::forget(lib);
-                                }
-                                Err(e) => {
-                                    warn!("Unable to load plugin library: {} - {}", path.display(), e);
-                                }
+                if valid_ext {
+                    info!("Found plugin file: {}", path.display());
+
+                    // Use libloading to load dynamic library
+                    unsafe {
+                        match libloading::Library::new(path.as_path()) {
+                            Ok(lib) => {
+                                // Get plugin creation function
+                                let create_plugin: libloading::Symbol<
+                                    fn() -> Box<dyn EncryptionPlugin>,
+                                > = match lib.get(b"create_plugin") {
+                                    Ok(func) => func,
+                                    Err(e) => {
+                                        warn!("Unable to get plugin creation function, skipping plugin: {} - {}", path.display(), e);
+                                        continue;
+                                    }
+                                };
+
+                                // Call creation function to get plugin instance
+                                let plugin = create_plugin();
+                                let plugin_name = plugin.name().to_string();
+
+                                info!(
+                                    "Successfully loaded plugin: {} - {}",
+                                    plugin_name,
+                                    plugin.description()
+                                );
+
+                                // Register plugin
+                                let mut manager = PLUGIN_MANAGER.lock().unwrap();
+                                manager.register_plugin(Arc::from(plugin));
+
+                                // Don't release the library, as the plugin needs to be used continuously
+                                // Store the library somewhere to prevent it from being dropped (simplified handling here)
+                                std::mem::forget(lib);
+                            }
+                            Err(e) => {
+                                warn!("Unable to load plugin library: {} - {}", path.display(), e);
                             }
                         }
                     }

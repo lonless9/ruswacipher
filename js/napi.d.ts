@@ -55,6 +55,20 @@ export function obfuscateWasm(
 ): boolean;
 
 /**
+ * 仅混淆WebAssembly文件（不加密）
+ * 
+ * @param inputPath 输入文件路径
+ * @param outputPath 输出文件路径
+ * @param level 混淆级别
+ * @returns 操作是否成功
+ */
+export function obfuscateWasmOnly(
+  inputPath: string,
+  outputPath: string,
+  level: ObfuscationLevel
+): boolean;
+
+/**
  * 获取RusWaCipher库版本
  * 
  * @returns 版本号

@@ -77,7 +77,7 @@ impl WasmModule {
             .iter()
             .filter(|section| {
                 section.section_type == SectionType::Custom
-                    && section.name.as_ref().map_or(false, |n| n == name)
+                    && section.name.as_ref().is_some_and(|n| n == name)
             })
             .collect()
     }

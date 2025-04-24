@@ -9,6 +9,12 @@ use rand::Rng;
 /// ChaCha20-Poly1305 encryption plugin implementation
 pub struct ChaCha20Poly1305Plugin;
 
+impl Default for ChaCha20Poly1305Plugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChaCha20Poly1305Plugin {
     /// Create new ChaCha20-Poly1305 plugin instance
     pub fn new() -> Self {
