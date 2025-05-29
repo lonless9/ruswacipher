@@ -153,6 +153,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
+
+      - name: Build WASM modules
+        run: |
+          cd test-wasm
+          cargo build --target wasm32-unknown-unknown --release
+          mkdir -p pkg
+          wasm-bindgen target/wasm32-unknown-unknown/release/test_wasm.wasm --out-dir pkg --target web --no-typescript
+          cp pkg/test_wasm_bg.wasm ../web/test.wasm
+
+          cd ../wasm-decryptor-helper
+          cargo build --target wasm32-unknown-unknown --release
+          mkdir -p pkg
+          wasm-bindgen target/wasm32-unknown-unknown/release/wasm_decryptor_helper.wasm --out-dir pkg --target web --no-typescript
+          cp pkg/wasm_decryptor_helper.js ../web/wasm-decryptor-helper.js
+          cp pkg/wasm_decryptor_helper_bg.wasm ../web/wasm-decryptor-helper.wasm
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
