@@ -1,24 +1,9 @@
-pub mod algorithms;
-pub mod engine;
-pub mod plugins;
+pub mod aes_gcm;
+pub mod chacha20poly1305;
+pub mod key_management;
+pub mod traits;
 
-use anyhow::Result;
-use std::path::Path;
-
-/// Encryption and decryption function wrappers
-pub use engine::{decrypt_data, encrypt_data, generate_key, load_key, save_key};
-
-/// Encrypt WASM file
-pub fn encrypt_file(
-    input: &Path,
-    output: &Path,
-    key_file: Option<&Path>,
-    algorithm: &str,
-) -> Result<()> {
-    engine::encrypt_file(input, output, key_file, algorithm)
-}
-
-/// Decrypt WASM file
-pub fn decrypt_file(input: &Path, output: &Path, key_file: &Path) -> Result<()> {
-    engine::decrypt_file(input, output, key_file)
-}
+pub use aes_gcm::AesGcmCipher;
+pub use chacha20poly1305::ChaCha20Poly1305Cipher;
+pub use key_management::{generate_key, KeyManager};
+pub use traits::{Cipher, EncryptionResult};

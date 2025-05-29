@@ -1,0 +1,1 @@
+{"$message_type":"diagnostic","message":"options `-C embed-bitcode=no` and `-C lto` are incompatible","code":null,"level":"error","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: options `-C embed-bitcode=no` and `-C lto` are incompatible\u001b[0m\n\n"}

@@ -1,13 +1,1 @@
 /target
-/node_modules
-/js/dist
-/js/node_modules
-/js/package-lock.json
-/examples/*.wasm
-/examples/*.wasm.key
-/examples/*.meta
-
-./examples/advanced_app/advanced.wasm
-./examples/advanced_app/advanced.encrypted.wasm
-./examples/advanced_app/advanced.wasm.key
-./examples/advanced_app/advanced.wasm.key.meta

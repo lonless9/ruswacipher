@@ -12,7 +12,7 @@ categories = ["wasm", "cryptography", "command-line-utilities"]
 
 [dependencies]
 # WASM parsing related
-wasmparser = "0.227.1"
+wasmparser = "0.232.0"
 wasm-bindgen = "0.2.100"
 
 # Encryption related - Using libraries from the RustCrypto organization
@@ -20,14 +20,14 @@ aead = "0.5.2"
 aes-gcm = "0.10.3"
 chacha20poly1305 = "0.10.1"
 cipher = "0.4.4"
-rand = "0.9.0"
-getrandom = { version = "0.3.2" }
+rand = "0.9.1"
+getrandom = { version = "0.3.3" }
 
 # Plugin system
-libloading = "0.8.0"
+libloading = "0.8.8"
 
 # CLI related
-clap = { version = "4.5.31", features = ["derive"] }
+clap = { version = "4.5.39", features = ["derive"] }
 
 # Serialization related
 serde = { version = "1.0.197", features = ["derive"] }
@@ -36,29 +36,29 @@ bincode = "2.0.1"
 
 # Error handling
 thiserror = "2.0.12"
-anyhow = "1.0.96"
+anyhow = "1.0.98"
 
 # Logging
-log = "0.4.21"
-env_logger = "0.11.3"
+log = "0.4.27"
+env_logger = "0.11.8"
 
 # Utilities
 hex = "0.4.3"
 base64 = "0.22.1"
 rand_chacha = "0.9.0"
 lazy_static = "1.4.0"
-sha2 = "0.10.8"
+sha2 = "0.10.9"
 hmac = "0.12.1"
-once_cell = "1.21.1"
+once_cell = "1.21.3"
 
 [dev-dependencies]
-criterion = "0.5.0"
-tempfile = "3.10.1"
+criterion = "0.6.0"
+tempfile = "3.20.0"
 wasm-bindgen-test = "0.3.41"
-
-[[bench]]
-name = "encryption_benchmark"
-harness = false
+tokio = { version = "1.0", features = ["full"] }
+assert_cmd = "2.0"
+predicates = "3.0"
+serial_test = "3.0"
 
 [profile.release]
 opt-level = 3
@@ -68,3 +68,11 @@ codegen-units = 1
 [features]
 default = []
 http-server = []  # For enabling test HTTP server functionality
+
+[[bench]]
+name = "crypto_benchmarks"
+harness = false
+
+[[bench]]
+name = "wasm_benchmarks"
+harness = false

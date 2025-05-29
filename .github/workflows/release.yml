@@ -4,79 +4,271 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+        default: 'v0.1.0'
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-release:
-    name: Build and Release
+  test:
+    name: Test Suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
-      - name: Build Release
-        run: cargo build --release
-      
-      - name: Create Release Assets
-        run: |
-          mkdir -p release
-          cp target/release/ruswacipher release/
-          cp -r examples release/
-          tar -czf ruswacipher-linux.tar.gz -C release .
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
         with:
-          files: |
-            ruswacipher-linux.tar.gz
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
-  build-cross-platform:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+          components: clippy, rustfmt
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Run benchmarks (dry run)
+        run: cargo bench --no-run
+
+  build-cli:
+    name: Build CLI
+    needs: test
     strategy:
       matrix:
         include:
-          - os: windows-latest
-            artifact_name: ruswacipher.exe
-            asset_name: ruswacipher-windows.zip
-          - os: macos-latest
-            artifact_name: ruswacipher
-            asset_name: ruswacipher-macos.tar.gz
-    
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: false
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: true
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            use-cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            use-cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use-cross: false
+
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
-      - name: Build Release
-        run: cargo build --release
-      
-      - name: Create Release Assets (Windows)
-        if: matrix.os == 'windows-latest'
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.use-cross
+        run: cargo install cross
+
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package binary
+        run: |
+          mkdir -p dist
+
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            binary_name="ruswacipher.exe"
+            archive_ext="zip"
+          else
+            binary_name="ruswacipher"
+            archive_ext="tar.gz"
+          fi
+
+          # Create package directory
+          package_dir="ruswacipher-${{ github.ref_name }}-${{ matrix.target }}"
+          mkdir -p "$package_dir"
+
+          # Copy files
+          cp "target/${{ matrix.target }}/release/$binary_name" "$package_dir/"
+          cp README.md LICENSE "$package_dir/"
+
+          # Create installation instructions
+          cat > "$package_dir/INSTALL.md" << 'EOF'
+          # Installation Instructions
+
+          ## Linux/macOS
+          1. Extract the archive
+          2. Copy the binary to your PATH:
+             ```bash
+             sudo cp ruswacipher /usr/local/bin/
+             ```
+
+          ## Windows
+          1. Extract the archive
+          2. Add the directory to your PATH environment variable
+
+          ## Usage
+          Run `ruswacipher --help` for usage information.
+          EOF
+
+          # Create archive
+          if [[ "$archive_ext" == "zip" ]]; then
+            zip -r "dist/$package_dir.zip" "$package_dir"
+          else
+            tar -czf "dist/$package_dir.tar.gz" "$package_dir"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.target }}
+          path: dist/*
+
+  build-web:
+    name: Build Web Runtime
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Run tests
+        working-directory: web
+        run: npm test
+
+      - name: Build production bundle
+        working-directory: web
+        run: npm run build
+
+      - name: Package web runtime
+        run: |
+          mkdir -p dist/web-runtime
+          cp web/dist/* dist/web-runtime/
+          cp web/wasmGuardianLoader.js dist/web-runtime/
+          cp web/README.md dist/web-runtime/
+          cp web/package.json dist/web-runtime/
+
+          cd dist
+          zip -r "ruswacipher-web-runtime-${{ github.ref_name }}.zip" web-runtime/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-runtime
+          path: dist/*.zip
+
+  create-release:
+    name: Create Release
+    needs: [build-cli, build-web]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Organize release files
         run: |
           mkdir -p release
-          cp target/release/${{ matrix.artifact_name }} release/
-          cp -r examples release/
-          Compress-Archive -Path release/* -DestinationPath ${{ matrix.asset_name }}
-        shell: pwsh
-      
-      - name: Create Release Assets (macOS)
-        if: matrix.os == 'macos-latest'
+
+          # Copy CLI binaries
+          find artifacts/cli-* -name "*.tar.gz" -o -name "*.zip" | while read file; do
+            cp "$file" release/
+          done
+
+          # Copy web runtime
+          find artifacts/web-runtime -name "*.zip" | while read file; do
+            cp "$file" release/
+          done
+
+      - name: Generate checksums
+        working-directory: release
         run: |
-          mkdir -p release
-          cp target/release/${{ matrix.artifact_name }} release/
-          cp -r examples release/
-          tar -czf ${{ matrix.asset_name }} -C release .
-      
-      - name: Upload Release Assets
+          sha256sum *.tar.gz *.zip > checksums-sha256.txt
+          md5sum *.tar.gz *.zip > checksums-md5.txt
+
+      - name: Create release notes
+        run: |
+          cat > release/RELEASE_NOTES.md << 'EOF'
+          # RusWaCipher ${{ github.ref_name }} Release
+
+          ## Downloads
+
+          ### CLI Tool
+
+          | Platform | Architecture | Download |
+          |----------|-------------|----------|
+          | Linux | x86_64 | ruswacipher-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz |
+          | Linux (musl) | x86_64 | ruswacipher-${{ github.ref_name }}-x86_64-unknown-linux-musl.tar.gz |
+          | Linux | ARM64 | ruswacipher-${{ github.ref_name }}-aarch64-unknown-linux-gnu.tar.gz |
+          | Windows | x86_64 | ruswacipher-${{ github.ref_name }}-x86_64-pc-windows-gnu.zip |
+          | macOS | x86_64 | ruswacipher-${{ github.ref_name }}-x86_64-apple-darwin.tar.gz |
+          | macOS | ARM64 | ruswacipher-${{ github.ref_name }}-aarch64-apple-darwin.tar.gz |
+
+          ### Web Runtime
+
+          | Component | Download |
+          |-----------|----------|
+          | JavaScript Runtime | ruswacipher-web-runtime-${{ github.ref_name }}.zip |
+
+          ## Verification
+
+          Verify downloads using the provided checksums:
+          - SHA256: checksums-sha256.txt
+          - MD5: checksums-md5.txt
+
+          ## Installation
+
+          See the INSTALL.md file in each archive for platform-specific installation instructions.
+
+          ## Documentation
+
+          - [User Guide](https://github.com/lonless9/ruswacipher/blob/main/docs/user-guide.md)
+          - [API Reference](https://github.com/lonless9/ruswacipher/blob/main/docs/api-reference.md)
+          - [Security Guide](https://github.com/lonless9/ruswacipher/blob/main/docs/security-guide.md)
+          EOF
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ matrix.asset_name }}
+          files: release/*
+          body_path: release/RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
