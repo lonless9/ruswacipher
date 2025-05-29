@@ -33,6 +33,15 @@ pub enum VMOpcode {
     // Memory operations
     Load = 0x40,
     Store = 0x41,
+    
+    // 新增操作码
+    GlobalLoad = 0x45,    // 全局变量加载
+    GlobalStore = 0x46,   // 全局变量存储
+    Compare = 0x47,       // 比较操作
+    MemLoad = 0x48,       // 内存加载
+    MemStore = 0x49,      // 内存存储
+    CallIndirect = 0x50,  // 间接调用
+    Select = 0x51,        // 选择操作
 
     // Special instructions
     Nop = 0xF0,
@@ -65,6 +74,14 @@ pub fn from_byte(byte: u8) -> Option<VMOpcode> {
 
         0x40 => Some(VMOpcode::Load),
         0x41 => Some(VMOpcode::Store),
+
+        0x45 => Some(VMOpcode::GlobalLoad),
+        0x46 => Some(VMOpcode::GlobalStore),
+        0x47 => Some(VMOpcode::Compare),
+        0x48 => Some(VMOpcode::MemLoad),
+        0x49 => Some(VMOpcode::MemStore),
+        0x50 => Some(VMOpcode::CallIndirect),
+        0x51 => Some(VMOpcode::Select),
 
         0xF0 => Some(VMOpcode::Nop),
         0xFF => Some(VMOpcode::Exit),
@@ -359,6 +376,143 @@ impl VMInterpreter {
                         self.state.memory[address] = value as u8;
                     } else {
                         return Err(anyhow!("VM execution error: memory access out of bounds"));
+                    }
+                }
+            }
+            VMOpcode::GlobalLoad => {
+                // 全局变量加载 - 将使用全局内存区域的特定偏移
+                if self.state.pc < self.bytecode.len() {
+                    let global_idx = self.bytecode[self.state.pc] as usize;
+                    self.state.pc += 1;
+                    
+                    // 使用内存的特定位置模拟全局变量（简化实现）
+                    let global_mem_offset = 0xFF00; // 预留高地址区域作为全局变量区
+                    let address = global_mem_offset + global_idx;
+                    
+                    if address < self.state.memory.len() {
+                        let value = self.state.memory[address] as i32;
+                        self.state.stack.push(value);
+                    } else {
+                        return Err(anyhow!("VM execution error: global variable access out of bounds"));
+                    }
+                }
+            }
+            VMOpcode::GlobalStore => {
+                // 全局变量存储
+                if let Some(value) = self.state.stack.pop() {
+                    if self.state.pc < self.bytecode.len() {
+                        let global_idx = self.bytecode[self.state.pc] as usize;
+                        self.state.pc += 1;
+                        
+                        // 使用内存的特定位置模拟全局变量
+                        let global_mem_offset = 0xFF00; // 预留高地址区域作为全局变量区
+                        let address = global_mem_offset + global_idx;
+                        
+                        if address < self.state.memory.len() {
+                            self.state.memory[address] = value as u8;
+                        } else {
+                            return Err(anyhow!("VM execution error: global variable access out of bounds"));
+                        }
+                    }
+                }
+            }
+            VMOpcode::Compare => {
+                // 比较操作
+                if self.state.stack.len() >= 2 && self.state.pc < self.bytecode.len() {
+                    let cmp_type = self.bytecode[self.state.pc];
+                    self.state.pc += 1;
+                    
+                    let b = self.state.stack.pop().unwrap();
+                    let a = self.state.stack.pop().unwrap();
+                    
+                    let result = match cmp_type {
+                        0 => (a == b) as i32, // 等于
+                        1 => (a != b) as i32, // 不等于
+                        2 => (a < b) as i32,  // 小于（有符号）
+                        3 => ((a as u32) < (b as u32)) as i32, // 小于（无符号）
+                        4 => (a > b) as i32,  // 大于（有符号）
+                        5 => ((a as u32) > (b as u32)) as i32, // 大于（无符号）
+                        _ => 0, // 未知比较类型
+                    };
+                    
+                    self.state.stack.push(result);
+                }
+            }
+            VMOpcode::MemLoad => {
+                // 内存加载（带对齐和偏移）
+                if let Some(base_addr) = self.state.stack.pop() {
+                    if self.state.pc + 1 < self.bytecode.len() {
+                        let _alignment = self.bytecode[self.state.pc]; // 对齐信息目前忽略
+                        self.state.pc += 1;
+                        let offset = self.bytecode[self.state.pc] as usize;
+                        self.state.pc += 1;
+                        
+                        let address = (base_addr as usize) + offset;
+                        
+                        if address < self.state.memory.len() {
+                            let value = self.state.memory[address] as i32;
+                            self.state.stack.push(value);
+                        } else {
+                            return Err(anyhow!("VM execution error: memory access out of bounds"));
+                        }
+                    }
+                }
+            }
+            VMOpcode::MemStore => {
+                // 内存存储（带对齐和偏移）
+                if self.state.stack.len() >= 2 {
+                    let value = self.state.stack.pop().unwrap();
+                    let base_addr = self.state.stack.pop().unwrap() as usize;
+                    
+                    if self.state.pc + 1 < self.bytecode.len() {
+                        let _alignment = self.bytecode[self.state.pc]; // 对齐信息目前忽略
+                        self.state.pc += 1;
+                        let offset = self.bytecode[self.state.pc] as usize;
+                        self.state.pc += 1;
+                        
+                        let address = base_addr + offset;
+                        
+                        if address < self.state.memory.len() {
+                            self.state.memory[address] = value as u8;
+                        } else {
+                            return Err(anyhow!("VM execution error: memory access out of bounds"));
+                        }
+                    }
+                }
+            }
+            VMOpcode::CallIndirect => {
+                // 间接调用
+                if let Some(func_idx) = self.state.stack.pop() {
+                    if self.state.pc + 1 < self.bytecode.len() {
+                        let _type_idx = self.bytecode[self.state.pc]; // 类型索引目前忽略
+                        self.state.pc += 1;
+                        let _table_idx = self.bytecode[self.state.pc]; // 表索引目前忽略
+                        self.state.pc += 1;
+                        
+                        // 简化实现：将函数索引作为目标地址
+                        // 在实际应用中，需要维护函数表和类型检查
+                        let target = func_idx as usize;
+                        if target < self.bytecode.len() {
+                            self.state.call_stack.push(self.state.pc);
+                            self.state.pc = target;
+                        } else {
+                            return Err(anyhow!("VM execution error: invalid indirect call target"));
+                        }
+                    }
+                }
+            }
+            VMOpcode::Select => {
+                // 选择操作
+                if self.state.stack.len() >= 3 {
+                    let condition = self.state.stack.pop().unwrap();
+                    let val2 = self.state.stack.pop().unwrap();
+                    let val1 = self.state.stack.pop().unwrap();
+                    
+                    // 如果条件非零，选择val1，否则选择val2
+                    if condition != 0 {
+                        self.state.stack.push(val1);
+                    } else {
+                        self.state.stack.push(val2);
                     }
                 }
             }

@@ -2,6 +2,7 @@ pub mod basic;
 pub mod control_flow;
 pub mod engine;
 pub mod function_split;
+pub mod interpreter;
 pub mod types;
 pub mod variable_obfuscation;
 pub mod virtualization;
@@ -20,6 +21,7 @@ pub use types::{ObfuscationError, ObfuscationLevel};
 pub use basic::{apply_transformations, get_transformations};
 pub use control_flow::{add_dead_code, obfuscate_control_flow};
 pub use function_split::split_large_functions;
+pub use interpreter::execute_vm_bytecode;
 pub use variable_obfuscation::rename_locals;
 pub use virtualization::{find_virtualizable_functions, virtualize_functions};
 
