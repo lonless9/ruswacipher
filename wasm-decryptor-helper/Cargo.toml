@@ -1,0 +1,38 @@
+[package]
+name = "wasm-decryptor-helper"
+version = "0.1.0"
+edition = "2021"
+authors = ["RusWaCipher Project"]
+description = "WASM helper module for decrypting encrypted WebAssembly modules in browsers"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+chacha20poly1305 = "0.10.1"
+aead = "0.5.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+console_error_panic_hook = { version = "0.1.7", optional = true }
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+  "console",
+]
+
+[dependencies.wee_alloc]
+version = "0.4.5"
+optional = true
+
+# Enable optimizations for size in release builds
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false
+
+[features]
+default = ["console_error_panic_hook"]
+console_error_panic_hook = []

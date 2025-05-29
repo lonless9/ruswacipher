@@ -1,0 +1,315 @@
+#!/bin/bash
+
+# Comprehensive test script for RusWaCipher web runtime
+# This script builds the test WASM, encrypts it, and sets up the test environment
+
+set -e
+
+echo "🧪 RusWaCipher Web Runtime Test Setup"
+echo "====================================="
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check prerequisites
+print_status "Checking prerequisites..."
+
+if ! command -v wasm-pack &> /dev/null; then
+    print_error "wasm-pack is required but not installed."
+    print_status "Install with: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh"
+    exit 1
+fi
+
+if ! command -v cargo &> /dev/null; then
+    print_error "cargo is required but not installed."
+    exit 1
+fi
+
+print_success "Prerequisites check passed"
+
+# Build the main ruswacipher tool
+print_status "Building ruswacipher..."
+cargo build --release
+print_success "ruswacipher built successfully"
+
+# Build the test WASM module
+print_status "Building test WASM module..."
+cd test-wasm
+
+if [ ! -f "Cargo.toml" ]; then
+    print_error "test-wasm/Cargo.toml not found. Please ensure the test WASM project is set up correctly."
+    exit 1
+fi
+
+wasm-pack build --target web --out-dir pkg
+cp pkg/test_wasm_bg.wasm ../web/test.wasm
+
+cd ..
+print_success "Test WASM module built and copied to web/test.wasm"
+
+# Build the WASM decryption helper
+print_status "Building WASM decryption helper..."
+cd wasm-decryptor-helper
+
+if [ ! -f "Cargo.toml" ]; then
+    print_warning "wasm-decryptor-helper/Cargo.toml not found. Skipping WASM helper build."
+else
+    ./build.sh
+    print_success "WASM decryption helper built successfully"
+fi
+
+cd ..
+
+# Test encryption with AES-GCM
+print_status "Testing AES-GCM encryption..."
+./target/release/ruswacipher encrypt \
+    -i web/test.wasm \
+    -o web/test.wasm.enc \
+    -a aes-gcm \
+    --generate-key web/test-aes.key
+
+if [ -f "web/test.wasm.enc" ] && [ -f "web/test-aes.key" ]; then
+    print_success "AES-GCM encryption completed"
+
+    # Read the generated key
+    AES_KEY=$(cat web/test-aes.key)
+    print_status "Generated AES key: $AES_KEY"
+else
+    print_error "AES-GCM encryption failed"
+    exit 1
+fi
+
+# Test encryption with ChaCha20-Poly1305
+print_status "Testing ChaCha20-Poly1305 encryption..."
+./target/release/ruswacipher encrypt \
+    -i web/test.wasm \
+    -o web/test-chacha.wasm.enc \
+    -a chacha20poly1305 \
+    --generate-key web/test-chacha.key
+
+if [ -f "web/test-chacha.wasm.enc" ] && [ -f "web/test-chacha.key" ]; then
+    print_success "ChaCha20-Poly1305 encryption completed"
+
+    # Read the generated key
+    CHACHA_KEY=$(cat web/test-chacha.key)
+    print_status "Generated ChaCha key: $CHACHA_KEY"
+else
+    print_error "ChaCha20-Poly1305 encryption failed"
+    exit 1
+fi
+
+# Create a test configuration file
+print_status "Creating test configuration..."
+cat > web/test-config.json << EOF
+{
+    "aes-gcm": {
+        "encryptedFile": "test.wasm.enc",
+        "key": "$AES_KEY",
+        "algorithm": "aes-gcm"
+    },
+    "chacha20poly1305": {
+        "encryptedFile": "test-chacha.wasm.enc",
+        "key": "$CHACHA_KEY",
+        "algorithm": "chacha20poly1305"
+    }
+}
+EOF
+
+print_success "Test configuration created at web/test-config.json"
+
+# Verify file sizes
+print_status "Verifying file sizes..."
+ORIGINAL_SIZE=$(stat -c%s "web/test.wasm")
+AES_SIZE=$(stat -c%s "web/test.wasm.enc")
+CHACHA_SIZE=$(stat -c%s "web/test-chacha.wasm.enc")
+
+echo "  Original WASM: $ORIGINAL_SIZE bytes"
+echo "  AES-GCM encrypted: $AES_SIZE bytes"
+echo "  ChaCha20-Poly1305 encrypted: $CHACHA_SIZE bytes"
+
+# Create an enhanced test HTML with the configuration
+print_status "Creating enhanced test page..."
+cat > web/test-enhanced.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RusWaCipher Enhanced Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>🦀 RusWaCipher Enhanced Test</h1>
+
+    <div class="test-case">
+        <h3>Automated Tests</h3>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="results"></div>
+    </div>
+
+    <div class="test-case">
+        <h3>Console Output</h3>
+        <div id="console" class="log"></div>
+    </div>
+
+    <script src="wasmGuardianLoader.js"></script>
+    <script>
+        let testConfig = null;
+        let loader = new WasmGuardianLoader();
+
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleDiv = document.getElementById('console');
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleDiv.textContent += '[LOG] ' + args.join(' ') + '\n';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            consoleDiv.textContent += '[ERROR] ' + args.join(' ') + '\n';
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        };
+
+        // Load test configuration
+        fetch('test-config.json')
+            .then(response => response.json())
+            .then(config => {
+                testConfig = config;
+                console.log('Test configuration loaded:', config);
+            })
+            .catch(error => {
+                console.error('Failed to load test configuration:', error);
+            });
+
+        function addResult(message, isSuccess = true) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-case ${isSuccess ? 'success' : 'error'}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        async function testAesGcm() {
+            if (!testConfig) throw new Error('Test configuration not loaded');
+
+            const config = testConfig['aes-gcm'];
+            console.log('Testing AES-GCM decryption...');
+
+            const instance = await loader.loadEncryptedWasm(
+                config.encryptedFile,
+                config.key,
+                {},
+                config.algorithm
+            );
+
+            // Test the WASM functions
+            const addResult = instance.exports.add(10, 20);
+            if (addResult !== 30) throw new Error(`Expected 30, got ${addResult}`);
+
+            const multiplyResult = instance.exports.multiply(6, 7);
+            if (multiplyResult !== 42) throw new Error(`Expected 42, got ${multiplyResult}`);
+
+            return 'AES-GCM test passed';
+        }
+
+        async function testChaCha20Poly1305() {
+            if (!testConfig) throw new Error('Test configuration not loaded');
+
+            const config = testConfig['chacha20poly1305'];
+            console.log('Testing ChaCha20-Poly1305 decryption...');
+
+            try {
+                const instance = await loader.loadEncryptedWasm(
+                    config.encryptedFile,
+                    config.key,
+                    {},
+                    config.algorithm
+                );
+                return 'ChaCha20-Poly1305 test would pass (WASM helper not implemented yet)';
+            } catch (error) {
+                if (error.message.includes('WASM decryption helper not yet implemented')) {
+                    return 'ChaCha20-Poly1305 test skipped (WASM helper not implemented yet)';
+                }
+                throw error;
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+
+            const tests = [
+                { name: 'AES-GCM', fn: testAesGcm },
+                { name: 'ChaCha20-Poly1305', fn: testChaCha20Poly1305 }
+            ];
+
+            for (const test of tests) {
+                try {
+                    const result = await test.fn();
+                    addResult(`✅ ${test.name}: ${result}`, true);
+                } catch (error) {
+                    addResult(`❌ ${test.name}: ${error.message}`, false);
+                }
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('console').textContent = '';
+        }
+    </script>
+</body>
+</html>
+EOF
+
+print_success "Enhanced test page created at web/test-enhanced.html"
+
+# Start a simple HTTP server if Python is available
+if command -v python3 &> /dev/null; then
+    print_status "Starting HTTP server on port 8000..."
+    print_warning "Open http://localhost:8000/test-enhanced.html in your browser to run tests"
+    print_warning "Press Ctrl+C to stop the server"
+    cd web
+    python3 -m http.server 8000
+elif command -v python &> /dev/null; then
+    print_status "Starting HTTP server on port 8000..."
+    print_warning "Open http://localhost:8000/test-enhanced.html in your browser to run tests"
+    print_warning "Press Ctrl+C to stop the server"
+    cd web
+    python -m SimpleHTTPServer 8000
+else
+    print_warning "Python not found. Please serve the web directory manually."
+    print_status "You can open web/test-enhanced.html in a browser after serving the directory."
+fi

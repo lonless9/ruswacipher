@@ -1,0 +1,57 @@
+# Cargo configuration for RusWaCipher
+# This file helps avoid environment variable configuration issues
+
+[build]
+# Default target for WASM builds
+# target = "wasm32-unknown-unknown"  # Uncomment if you want WASM as default
+
+[target.wasm32-unknown-unknown]
+# Use rust-lld as the linker for WASM targets
+linker = "rust-lld"
+
+# Basic WASM-compatible flags (avoid LTO conflicts)
+rustflags = [
+    "-C", "opt-level=s",
+    "-C", "codegen-units=1",
+]
+
+[target.wasm32-unknown-unknown.dependencies]
+# Ensure consistent dependency resolution for WASM
+
+[profile.release-wasm]
+# Custom profile for WASM builds
+inherits = "release"
+opt-level = "s"          # Optimize for size
+lto = true               # Enable link-time optimization
+codegen-units = 1        # Single codegen unit for better optimization
+panic = "abort"          # Smaller binary size
+strip = true             # Strip debug symbols
+
+[profile.dev-wasm]
+# Custom profile for WASM development builds
+inherits = "dev"
+opt-level = 1            # Some optimization for reasonable performance
+debug = false            # Reduce binary size
+panic = "abort"          # Consistent with release
+
+# Environment variables that are safe to set
+[env]
+# Ensure consistent behavior across different environments
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_LINKER = "rust-lld"
+
+# Registry configuration for better reliability
+[registry]
+default = "crates-io"
+
+[registry.crates-io]
+protocol = "sparse"
+
+# Network configuration to avoid timeouts
+[net]
+retry = 3
+git-fetch-with-cli = true
+
+# HTTP configuration
+[http]
+timeout = 60
+multiplexing = true

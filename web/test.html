@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RusWaCipher Web Runtime Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦀 RusWaCipher Web Runtime Test</h1>
+
+        <div class="test-section info">
+            <h3>Loader Information</h3>
+            <div id="loader-info">Loading...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Configuration</h3>
+            <div class="form-group">
+                <label for="wasm-url">Encrypted WASM URL:</label>
+                <input type="text" id="wasm-url" value="./test.wasm.enc" placeholder="Path to encrypted WASM file">
+            </div>
+
+            <div class="form-group">
+                <label for="key-method">Key Delivery Method:</label>
+                <select id="key-method" onchange="updateKeyInputs()">
+                    <option value="hardcoded">Hardcoded Key</option>
+                    <option value="server">Server-Based Key</option>
+                    <option value="derived">Client-Side Derived Key</option>
+                </select>
+            </div>
+
+            <div id="hardcoded-inputs" class="key-inputs">
+                <div class="form-group">
+                    <label for="key-hex">Decryption Key (Hex):</label>
+                    <input type="text" id="key-hex" placeholder="Enter hexadecimal key">
+                </div>
+            </div>
+
+            <div id="server-inputs" class="key-inputs" style="display: none;">
+                <div class="form-group">
+                    <label for="key-id">Key Identifier:</label>
+                    <input type="text" id="key-id" value="test-aes-key" placeholder="Enter key ID">
+                </div>
+                <div class="form-group">
+                    <label for="auth-token">Auth Token (Optional):</label>
+                    <input type="text" id="auth-token" placeholder="Bearer token for authentication">
+                </div>
+                <div class="form-group">
+                    <label for="server-endpoint">Server Endpoint:</label>
+                    <input type="text" id="server-endpoint" value="/api/keys" placeholder="Key server endpoint">
+                </div>
+            </div>
+
+            <div id="derived-inputs" class="key-inputs" style="display: none;">
+                <div class="form-group">
+                    <label for="derivation-input">Derivation Input:</label>
+                    <input type="text" id="derivation-input" placeholder="Password or seed for key derivation">
+                </div>
+                <div class="form-group">
+                    <label for="derivation-salt">Salt:</label>
+                    <input type="text" id="derivation-salt" value="ruswacipher-salt-2024" placeholder="Salt for key derivation">
+                </div>
+                <div class="form-group">
+                    <label for="derivation-iterations">Iterations:</label>
+                    <input type="number" id="derivation-iterations" value="100000" placeholder="PBKDF2 iterations">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="algorithm">Algorithm:</label>
+                <select id="algorithm">
+                    <option value="auto">Auto-detect</option>
+                    <option value="aes-gcm">AES-GCM</option>
+                    <option value="chacha20poly1305">ChaCha20-Poly1305</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Actions</h3>
+            <button onclick="testBasicFunctionality()">Test Basic Functionality</button>
+            <button onclick="testLoadEncryptedWasm()">Load Encrypted WASM</button>
+            <button onclick="testKeyDeliveryMethods()">Test Key Delivery Methods</button>
+            <button onclick="testInvalidInputs()">Test Invalid Inputs</button>
+            <button onclick="startMockServer()">Start Mock Server</button>
+            <button onclick="stopMockServer()">Stop Mock Server</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="test-section">
+            <h3>Test Results</h3>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Console Log</h3>
+            <div id="console-log" class="log"></div>
+        </div>
+    </div>
+
+    <script src="wasmGuardianLoader.js"></script>
+    <script src="mockKeyServer.js"></script>
+    <script>
+        let loader;
+        let mockServer;
+        let originalConsoleLog;
+        let originalConsoleError;
+
+        // Initialize the page
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeLoader();
+            initializeMockServer();
+            setupConsoleCapture();
+            displayLoaderInfo();
+        });
+
+        function initializeLoader() {
+            try {
+                loader = new WasmGuardianLoader();
+                log('✅ WasmGuardianLoader initialized successfully');
+            } catch (error) {
+                log(`❌ Failed to initialize WasmGuardianLoader: ${error.message}`, 'error');
+            }
+        }
+
+        function initializeMockServer() {
+            try {
+                mockServer = new MockKeyServer();
+                log('✅ MockKeyServer initialized successfully');
+            } catch (error) {
+                log(`❌ Failed to initialize MockKeyServer: ${error.message}`, 'error');
+            }
+        }
+
+        function setupConsoleCapture() {
+            const logElement = document.getElementById('console-log');
+
+            originalConsoleLog = console.log;
+            originalConsoleError = console.error;
+
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                logElement.textContent += '[LOG] ' + args.join(' ') + '\n';
+                logElement.scrollTop = logElement.scrollHeight;
+            };
+
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                logElement.textContent += '[ERROR] ' + args.join(' ') + '\n';
+                logElement.scrollTop = logElement.scrollHeight;
+            };
+        }
+
+        function displayLoaderInfo() {
+            if (!loader) return;
+
+            const info = loader.getInfo();
+            const infoElement = document.getElementById('loader-info');
+
+            infoElement.innerHTML = `
+                <strong>Version:</strong> ${info.version}<br>
+                <strong>Supported Algorithms:</strong> ${info.supportedAlgorithms.join(', ')}<br>
+                <strong>SubtleCrypto Available:</strong> ${info.hasSubtleCrypto ? '✅' : '❌'}<br>
+                <strong>WASM Helper Loaded:</strong> ${info.wasmHelperLoaded ? '✅' : '❌'}
+            `;
+        }
+
+        function log(message, type = 'info') {
+            const resultsElement = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+
+            const logEntry = document.createElement('div');
+            logEntry.className = `test-section ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+
+            resultsElement.appendChild(logEntry);
+            resultsElement.scrollTop = resultsElement.scrollHeight;
+        }
+
+        async function testBasicFunctionality() {
+            log('🧪 Testing basic functionality...');
+
+            try {
+                if (!loader) {
+                    throw new Error('Loader not initialized');
+                }
+
+                const info = loader.getInfo();
+                log(`✅ Loader info retrieved: ${JSON.stringify(info)}`);
+
+                // Test input validation
+                try {
+                    await loader.loadEncryptedWasm('', '', {});
+                    log('❌ Should have failed with empty inputs', 'error');
+                } catch (error) {
+                    log(`✅ Input validation working: ${error.message}`);
+                }
+
+                log('✅ Basic functionality test completed');
+            } catch (error) {
+                log(`❌ Basic functionality test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLoadEncryptedWasm() {
+            log('🧪 Testing encrypted WASM loading...');
+
+            try {
+                const wasmUrl = document.getElementById('wasm-url').value;
+                const keyMethod = document.getElementById('key-method').value;
+                const algorithm = document.getElementById('algorithm').value;
+
+                if (!wasmUrl) {
+                    throw new Error('Please provide WASM URL');
+                }
+
+                // Configure loader based on selected method
+                const loaderConfig = getLoaderConfig();
+                const keyOrIdentifier = getKeyOrIdentifier();
+
+                if (!keyOrIdentifier) {
+                    throw new Error('Please provide key or key identifier');
+                }
+
+                log(`Attempting to load: ${wasmUrl}`);
+                log(`Using key method: ${keyMethod}`);
+                log(`Using algorithm: ${algorithm}`);
+
+                // Create loader with appropriate configuration
+                const configuredLoader = new WasmGuardianLoader(loaderConfig);
+
+                const wasmInstance = await configuredLoader.loadEncryptedWasm(wasmUrl, keyOrIdentifier, {}, algorithm);
+
+                log('✅ WASM loaded successfully!');
+                log(`Instance exports: ${Object.keys(wasmInstance.exports).join(', ')}`);
+
+                // Try to call a simple function if available
+                if (wasmInstance.exports.add) {
+                    const result = wasmInstance.exports.add(5, 3);
+                    log(`✅ Function call test: add(5, 3) = ${result}`);
+                }
+
+            } catch (error) {
+                log(`❌ WASM loading failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testInvalidInputs() {
+            log('🧪 Testing invalid inputs...');
+
+            const testCases = [
+                { url: '', key: 'abc123', desc: 'Empty URL' },
+                { url: 'test.wasm', key: '', desc: 'Empty key' },
+                { url: 'test.wasm', key: 'invalid_hex!', desc: 'Invalid hex key' },
+                { url: 'test.wasm', key: 'abc123', algorithm: 'invalid', desc: 'Invalid algorithm' }
+            ];
+
+            for (const testCase of testCases) {
+                try {
+                    await loader.loadEncryptedWasm(
+                        testCase.url,
+                        testCase.key,
+                        {},
+                        testCase.algorithm || 'aes-gcm'
+                    );
+                    log(`❌ ${testCase.desc}: Should have failed`, 'error');
+                } catch (error) {
+                    log(`✅ ${testCase.desc}: Correctly rejected - ${error.message}`);
+                }
+            }
+        }
+
+        async function testKeyDeliveryMethods() {
+            log('🧪 Testing all key delivery methods...');
+
+            const testCases = [
+                {
+                    method: 'hardcoded',
+                    config: { keyMethod: 'hardcoded' },
+                    keyData: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                },
+                {
+                    method: 'server',
+                    config: {
+                        keyMethod: 'server',
+                        keyServerEndpoint: '/api/keys'
+                    },
+                    keyData: 'test-aes-key'
+                },
+                {
+                    method: 'derived',
+                    config: {
+                        keyMethod: 'derived',
+                        derivationParams: {
+                            algorithm: 'SHA-256',
+                            iterations: 10000, // Reduced for testing
+                            salt: 'test-salt'
+                        }
+                    },
+                    keyData: 'test-password-123'
+                }
+            ];
+
+            for (const testCase of testCases) {
+                try {
+                    log(`Testing ${testCase.method} method...`);
+
+                    const testLoader = new WasmGuardianLoader(testCase.config);
+
+                    // Test key resolution without WASM loading
+                    const resolvedKey = await testLoader._resolveDecryptionKey(testCase.keyData);
+
+                    if (resolvedKey && resolvedKey.length > 0) {
+                        log(`✅ ${testCase.method}: Key resolved successfully (${resolvedKey.length} chars)`);
+                    } else {
+                        log(`❌ ${testCase.method}: Key resolution failed`, 'error');
+                    }
+
+                } catch (error) {
+                    log(`❌ ${testCase.method}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function getLoaderConfig() {
+            const keyMethod = document.getElementById('key-method').value;
+
+            const config = { keyMethod };
+
+            switch (keyMethod) {
+                case 'server':
+                    config.keyServerEndpoint = document.getElementById('server-endpoint').value;
+                    const authToken = document.getElementById('auth-token').value;
+                    if (authToken) {
+                        config.authToken = authToken;
+                    }
+                    break;
+
+                case 'derived':
+                    config.derivationParams = {
+                        algorithm: 'SHA-256',
+                        iterations: parseInt(document.getElementById('derivation-iterations').value) || 100000,
+                        salt: document.getElementById('derivation-salt').value
+                    };
+                    break;
+            }
+
+            return config;
+        }
+
+        function getKeyOrIdentifier() {
+            const keyMethod = document.getElementById('key-method').value;
+
+            switch (keyMethod) {
+                case 'hardcoded':
+                    return document.getElementById('key-hex').value;
+                case 'server':
+                    return document.getElementById('key-id').value;
+                case 'derived':
+                    return document.getElementById('derivation-input').value;
+                default:
+                    return null;
+            }
+        }
+
+        function updateKeyInputs() {
+            const keyMethod = document.getElementById('key-method').value;
+
+            // Hide all input groups
+            document.querySelectorAll('.key-inputs').forEach(el => {
+                el.style.display = 'none';
+            });
+
+            // Show relevant input group
+            const targetId = keyMethod + '-inputs';
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                targetElement.style.display = 'block';
+            }
+        }
+
+        function startMockServer() {
+            try {
+                if (!mockServer) {
+                    throw new Error('Mock server not initialized');
+                }
+
+                mockServer.start();
+                log('✅ Mock key server started');
+                log('Available test keys: test-aes-key, test-chacha-key, prod-demo-key');
+
+            } catch (error) {
+                log(`❌ Failed to start mock server: ${error.message}`, 'error');
+            }
+        }
+
+        function stopMockServer() {
+            try {
+                if (!mockServer) {
+                    throw new Error('Mock server not initialized');
+                }
+
+                mockServer.stop();
+                log('✅ Mock key server stopped');
+
+            } catch (error) {
+                log(`❌ Failed to stop mock server: ${error.message}`, 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('console-log').textContent = '';
+        }
+    </script>
+</body>
+</html>

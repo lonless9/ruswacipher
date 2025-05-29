@@ -1,316 +1,297 @@
-use anyhow::Result;
+use assert_cmd::Command;
+use predicates::prelude::*;
+use serial_test::serial;
 use std::fs;
-use std::path::Path;
-use std::time::Instant;
-use tempfile::tempdir;
+use tempfile::{NamedTempFile, TempDir};
 
-use ruswacipher::crypto;
-use ruswacipher::obfuscation::{
-    self, add_dead_code, obfuscate_control_flow, obfuscate_wasm, rename_locals,
-    split_large_functions, virtualize_functions, ObfuscationLevel,
-};
-use ruswacipher::wasm::parser::{parse_file, parse_wasm, serialize_wasm};
-use ruswacipher::wasm::structure::{SectionType, WasmModule};
+// Helper function to create a minimal valid WASM file for testing
+fn create_test_wasm_file() -> NamedTempFile {
+    let temp_file = NamedTempFile::new().unwrap();
 
-/// Execute the complete obfuscation test pipeline
-#[test]
-fn test_full_obfuscation_pipeline() -> Result<()> {
-    println!("Starting comprehensive obfuscation test pipeline...");
+    // Create a minimal valid WASM module
+    let wasm_data = vec![
+        0x00, 0x61, 0x73, 0x6D, // WASM magic number
+        0x01, 0x00, 0x00, 0x00, // Version
+        // Type section
+        0x01, 0x04, 0x01, 0x60, 0x00, 0x00, // Function section
+        0x03, 0x02, 0x01, 0x00, // Code section
+        0x0A, 0x04, 0x01, 0x02, 0x00, 0x0B,
+    ];
 
-    // Create temporary directory
-    let temp_dir = tempdir()?;
-    let input_file = Path::new("tests/samples/simple.wasm");
-    let output_file = temp_dir.path().join("obfuscated_full.wasm");
-
-    // Verify input file exists
-    assert!(input_file.exists(), "Test sample file does not exist");
-
-    // Load original WASM
-    println!("Loading original WASM file...");
-    let original_wasm = fs::read(input_file)?;
-    let original_module = parse_wasm(&original_wasm)?;
-
-    // Analyze original module
-    analyze_module(&original_module, "Original Module");
-
-    // Start timing
-    let start_time = Instant::now();
-
-    // Method 1: Apply all obfuscations at once using high-level API (fast path)
-    println!("\nMethod 1: Applying all obfuscations at once using high-level API...");
-    obfuscate_wasm(input_file, &output_file, ObfuscationLevel::High, None)?;
-
-    // For encrypted output, the direct parsing will fail.
-    // Let's also create a decrypted output for verification
-    let key_file = output_file.with_extension("wasm.key");
-    let decrypted_file = temp_dir.path().join("decrypted_full.wasm");
-    ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file)?;
-
-    // Analyze obfuscation result using the decrypted file
-    let obfuscated_module_1 = parse_file(&decrypted_file)?;
-    analyze_module(&obfuscated_module_1, "After High-Level Obfuscation");
-
-    // Method 2: Manually apply each obfuscation step (detailed path)
-    println!("\nMethod 2: Manually applying obfuscation techniques step by step...");
-
-    // Step 1: Variable renaming
-    println!("Step 1: Applying variable renaming...");
-    let module_after_rename = rename_locals(original_module.clone())?;
-    analyze_module(&module_after_rename, "After Variable Renaming");
-
-    // Step 2: Add dead code
-    println!("Step 2: Adding dead code...");
-    let module_after_dead_code = add_dead_code(module_after_rename)?;
-    analyze_module(&module_after_dead_code, "After Adding Dead Code");
-
-    // Step 3: Control flow obfuscation
-    println!("Step 3: Applying control flow obfuscation...");
-    let module_after_control_flow = obfuscate_control_flow(module_after_dead_code)?;
-    analyze_module(&module_after_control_flow, "After Control Flow Obfuscation");
-
-    // Step 4: Function splitting
-    println!("Step 4: Applying function splitting...");
-    let module_after_function_split = split_large_functions(module_after_control_flow)?;
-    analyze_module(&module_after_function_split, "After Function Splitting");
-
-    // Step 5: Function virtualization
-    println!("Step 5: Applying function virtualization...");
-    let fully_obfuscated_module = virtualize_functions(module_after_function_split)?;
-    analyze_module(&fully_obfuscated_module, "After Function Virtualization");
-
-    // Calculate total time
-    let duration = start_time.elapsed();
-    println!("\nTotal obfuscation time: {:?}", duration);
-
-    // Save manually obfuscated result
-    let output_file_manual = temp_dir.path().join("obfuscated_manual.wasm");
-    let obfuscated_wasm = serialize_wasm(&fully_obfuscated_module)?;
-    fs::write(&output_file_manual, &obfuscated_wasm)?;
-
-    // Compare results of both methods
-    println!("\nComparison of obfuscation methods:");
-    println!(
-        "One-time API generated file size: {} bytes",
-        fs::metadata(&output_file)?.len()
-    );
-    println!(
-        "Manual process generated file size: {} bytes",
-        fs::metadata(&output_file_manual)?.len()
-    );
-
-    // Verify obfuscated WASM is valid
-    println!("\nVerifying obfuscated WASM module...");
-
-    // Check if export functions still exist
-    let has_exports = fully_obfuscated_module
-        .sections
-        .iter()
-        .any(|section| section.section_type == SectionType::Export);
-    assert!(has_exports, "Export section missing after obfuscation");
-
-    // Verify module can be reparsed
-    let reparsed_module = parse_wasm(&obfuscated_wasm)?;
-    assert!(
-        !reparsed_module.sections.is_empty(),
-        "Obfuscated module cannot be correctly parsed"
-    );
-
-    println!("Full obfuscation test pipeline completed!");
-    Ok(())
+    fs::write(temp_file.path(), wasm_data).unwrap();
+    temp_file
 }
 
-/// Analyze WASM module and print information
-fn analyze_module(module: &WasmModule, stage_name: &str) {
-    println!("\n--- {} Analysis ---", stage_name);
+#[test]
+#[serial]
+fn test_cli_encrypt_aes_gcm() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    let key_file = temp_dir.path().join("test.key");
 
-    // Calculate code section size
-    let code_size = module
-        .sections
-        .iter()
-        .find(|s| s.section_type == SectionType::Code)
-        .map_or(0, |s| s.data.len());
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--generate-key")
+        .arg(&key_file);
 
-    // Calculate section count
-    let section_count = module.sections.len();
+    cmd.assert().success().stderr(predicate::str::contains(
+        "Encryption completed successfully",
+    ));
 
-    // Determine function count
-    let func_count = module
-        .sections
-        .iter()
-        .find(|s| s.section_type == SectionType::Function)
-        .map_or(0, |s| s.data.len());
+    // Verify files were created
+    assert!(output_file.exists());
+    assert!(key_file.exists());
 
-    // Print analysis results
-    println!("Section count: {}", section_count);
-    println!("Code section size: {} bytes", code_size);
-    println!("Function count: {}", func_count);
-
-    // List all sections
-    println!("Section list:");
-    for (i, section) in module.sections.iter().enumerate() {
-        println!(
-            "  {}: {:?} - {} bytes",
-            i,
-            section.section_type,
-            section.data.len()
-        );
-    }
+    // Verify key file contains valid hex
+    let key_content = fs::read_to_string(&key_file).unwrap();
+    assert!(key_content.trim().chars().all(|c| c.is_ascii_hexdigit()));
+    assert_eq!(key_content.trim().len(), 64); // 32 bytes = 64 hex chars
 }
 
-/// More complex security obfuscation test, testing various types of WASM files
 #[test]
-fn test_comprehensive_obfuscation() -> Result<()> {
-    // Create temporary directory
-    let temp_dir = tempdir()?;
-    let input_file = Path::new("tests/samples/simple.wasm");
+#[serial]
+fn test_cli_encrypt_chacha20poly1305() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    let key_file = temp_dir.path().join("test.key");
 
-    println!("Executing comprehensive security obfuscation test...");
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("chacha20poly1305")
+        .arg("--generate-key")
+        .arg(&key_file);
 
-    // Test different obfuscation levels
-    for level in [
-        ObfuscationLevel::Low,
-        ObfuscationLevel::Medium,
-        ObfuscationLevel::High,
-    ] {
-        let output_file = temp_dir.path().join(format!("obfuscated_{:?}.wasm", level));
-        println!("\nApplying {:?} level obfuscation...", level);
+    cmd.assert().success().stderr(predicate::str::contains(
+        "Encryption completed successfully",
+    ));
 
-        // Apply obfuscation
-        let start = Instant::now();
-        obfuscate_wasm(input_file, &output_file, level, None)?;
-        let duration = start.elapsed();
-
-        // Get file size
-        let file_size = fs::metadata(&output_file)?.len();
-
-        // Decrypt the file for verification
-        let key_file = output_file.with_extension("wasm.key");
-        let decrypted_file = temp_dir.path().join(format!("decrypted_{:?}.wasm", level));
-        ruswacipher::crypto::engine::decrypt_file(&output_file, &decrypted_file, &key_file)?;
-
-        // Verify generated file
-        let obfuscated_module = parse_file(&decrypted_file)?;
-
-        // Print results
-        println!("Obfuscation level: {:?}", level);
-        println!("Processing time: {:?}", duration);
-        println!("File size: {} bytes", file_size);
-        println!("Section count: {}", obfuscated_module.sections.len());
-
-        // Verify all necessary sections exist
-        assert!(
-            obfuscated_module
-                .sections
-                .iter()
-                .any(|s| s.section_type == SectionType::Code),
-            "Code section missing after obfuscation"
-        );
-        assert!(
-            obfuscated_module
-                .sections
-                .iter()
-                .any(|s| s.section_type == SectionType::Function),
-            "Function section missing after obfuscation"
-        );
-        assert!(
-            obfuscated_module
-                .sections
-                .iter()
-                .any(|s| s.section_type == SectionType::Export),
-            "Export section missing after obfuscation"
-        );
-    }
-
-    println!("\nComprehensive security obfuscation test completed!");
-    Ok(())
+    // Verify files were created
+    assert!(output_file.exists());
+    assert!(key_file.exists());
 }
 
-/// Add a new test function to test the correct obfuscation and encryption pipeline
 #[test]
-fn test_correct_obfuscation_encryption_pipeline() -> Result<()> {
-    println!("Testing the correct obfuscation and encryption pipeline...");
-
-    // Create temporary directory
-    let temp_dir = tempdir()?;
-    let input_file = Path::new("tests/samples/simple.wasm");
-    let obfuscated_file = temp_dir.path().join("obfuscated.wasm");
+#[serial]
+fn test_cli_encrypt_decrypt_round_trip() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
     let encrypted_file = temp_dir.path().join("encrypted.wasm");
-
-    // Verify input file exists
-    assert!(input_file.exists(), "Test sample file does not exist");
-
-    // Load original WASM
-    println!("Loading original WASM file...");
-    let original_wasm = fs::read(input_file)?;
-    let original_module = parse_wasm(&original_wasm)?;
-    analyze_module(&original_module, "Original Module");
-
-    // Step 1: Applying obfuscation
-    println!("Step 1: Applying obfuscation...");
-    // Use direct module parsing to apply obfuscation
-    let wasm_data = fs::read(input_file)?;
-    let module = parse_wasm(&wasm_data)?;
-    let obfuscated_module = obfuscation::obfuscate(module, ObfuscationLevel::High)?;
-    let obfuscated_data = serialize_wasm(&obfuscated_module)?;
-    fs::write(&obfuscated_file, &obfuscated_data)?;
-
-    // Verify obfuscated file
-    let obfuscated_module = parse_file(&obfuscated_file)?;
-    analyze_module(&obfuscated_module, "After Obfuscation");
-
-    // Step 2: Encrypting obfuscated file
-    println!("Step 2: Encrypting obfuscated file...");
-
-    // Generate random key and save to temporary file
-    let key = crypto::engine::generate_key(32);
-    let key_file_path = temp_dir.path().join("encryption.key");
-    crypto::engine::save_key(&key, &key_file_path)?;
-
-    // Encrypt obfuscated file using key
-    let obfuscated_data = fs::read(&obfuscated_file)?;
-    let encrypted_data = crypto::engine::encrypt_data(&obfuscated_data, &key, "aes-gcm")?;
-    fs::write(&encrypted_file, &encrypted_data)?;
-
-    // Verify encrypted file exists
-    assert!(encrypted_file.exists(), "Encrypted file does not exist");
-    println!(
-        "File size after encryption: {} bytes",
-        fs::metadata(&encrypted_file)?.len()
-    );
-
-    // Step 3: Decrypting file
-    println!("Step 3: Decrypting file...");
     let decrypted_file = temp_dir.path().join("decrypted.wasm");
-    crypto::decrypt_file(&encrypted_file, &decrypted_file, &key_file_path)?;
+    let key_file = temp_dir.path().join("test.key");
 
-    // Verify decrypted file
-    let decrypted_module = parse_file(&decrypted_file)?;
-    analyze_module(&decrypted_module, "After Decryption");
+    // Read original file content
+    let original_content = fs::read(input_wasm.path()).unwrap();
 
-    // Verify decrypted file matches obfuscated file
-    let obfuscated_data = fs::read(&obfuscated_file)?;
-    let decrypted_data = fs::read(&decrypted_file)?;
-    assert_eq!(
-        obfuscated_data, decrypted_data,
-        "Decrypted data should match obfuscated data"
-    );
+    // Encrypt
+    let mut encrypt_cmd = Command::cargo_bin("ruswacipher").unwrap();
+    encrypt_cmd
+        .arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&encrypted_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--generate-key")
+        .arg(&key_file);
 
-    // Verify decrypted file is a valid WASM module
-    assert!(
-        decrypted_module
-            .sections
-            .iter()
-            .any(|s| s.section_type == SectionType::Code),
-        "Code section missing after pipeline"
-    );
-    assert!(
-        decrypted_module
-            .sections
-            .iter()
-            .any(|s| s.section_type == SectionType::Export),
-        "Export section missing after pipeline"
-    );
+    encrypt_cmd.assert().success();
 
-    println!("Correct obfuscation and encryption pipeline test completed!");
-    Ok(())
+    // Decrypt
+    let mut decrypt_cmd = Command::cargo_bin("ruswacipher").unwrap();
+    decrypt_cmd
+        .arg("decrypt")
+        .arg("-i")
+        .arg(&encrypted_file)
+        .arg("-o")
+        .arg(&decrypted_file)
+        .arg("-k")
+        .arg(&key_file);
+
+    decrypt_cmd.assert().success();
+
+    // Verify decrypted content matches original
+    let decrypted_content = fs::read(&decrypted_file).unwrap();
+    assert_eq!(original_content, decrypted_content);
+}
+
+#[test]
+#[serial]
+fn test_cli_encrypt_with_hex_key() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    let hex_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--key-hex")
+        .arg(hex_key);
+
+    cmd.assert().success();
+    assert!(output_file.exists());
+}
+
+#[test]
+#[serial]
+fn test_cli_encrypt_with_base64_key() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    // 32 bytes in base64
+    let base64_key = "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=";
+
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--key-base64")
+        .arg(base64_key);
+
+    cmd.assert().success();
+    assert!(output_file.exists());
+}
+
+#[test]
+#[serial]
+fn test_cli_invalid_input_file() {
+    let temp_dir = TempDir::new().unwrap();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    let key_file = temp_dir.path().join("test.key");
+
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg("nonexistent.wasm")
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--generate-key")
+        .arg(&key_file);
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("No such file or directory"));
+}
+
+#[test]
+#[serial]
+fn test_cli_invalid_algorithm() {
+    let input_wasm = create_test_wasm_file();
+    let temp_dir = TempDir::new().unwrap();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+    let key_file = temp_dir.path().join("test.key");
+
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("invalid-algorithm")
+        .arg("--generate-key")
+        .arg(&key_file);
+
+    cmd.assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
+#[serial]
+fn test_cli_help() {
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("--help");
+
+    cmd.assert().success().stdout(predicate::str::contains(
+        "A Rust tool for encrypting and protecting WebAssembly modules",
+    ));
+}
+
+#[test]
+#[serial]
+fn test_cli_version() {
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("--version");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("ruswacipher"));
+}
+
+#[test]
+#[serial]
+fn test_key_format_options() {
+    let temp_dir = TempDir::new().unwrap();
+    let input_wasm = create_test_wasm_file();
+    let output_file = temp_dir.path().join("encrypted.wasm");
+
+    // Test hex format (default)
+    let hex_key_file = temp_dir.path().join("hex.key");
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--generate-key")
+        .arg(&hex_key_file)
+        .arg("--key-format")
+        .arg("hex");
+
+    cmd.assert().success();
+
+    let hex_content = fs::read_to_string(&hex_key_file).unwrap();
+    assert!(hex_content.trim().chars().all(|c| c.is_ascii_hexdigit()));
+
+    // Test base64 format
+    let base64_key_file = temp_dir.path().join("base64.key");
+    let mut cmd = Command::cargo_bin("ruswacipher").unwrap();
+    cmd.arg("encrypt")
+        .arg("-i")
+        .arg(input_wasm.path())
+        .arg("-o")
+        .arg(&output_file)
+        .arg("-a")
+        .arg("aes-gcm")
+        .arg("--generate-key")
+        .arg(&base64_key_file)
+        .arg("--key-format")
+        .arg("base64");
+
+    cmd.assert().success();
+
+    let base64_content = fs::read_to_string(&base64_key_file).unwrap();
+    // Base64 should contain only valid base64 characters
+    assert!(base64_content
+        .trim()
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '='));
 }
