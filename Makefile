@@ -52,8 +52,8 @@ install-deps:
 	@echo "📦 Installing dependencies..."
 	@echo "Checking Rust installation..."
 	@rustc --version || (echo "❌ Rust not installed. Install from https://rustup.rs/" && exit 1)
-	@echo "Checking wasm-pack..."
-	@wasm-pack --version || (echo "Installing wasm-pack..." && curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh)
+	@echo "Checking wasm-bindgen-cli..."
+	@wasm-bindgen --version || (echo "Installing wasm-bindgen-cli..." && cargo install wasm-bindgen-cli)
 	@echo "✅ Dependencies installed"
 
 # Setup WASM build environment
@@ -65,8 +65,7 @@ setup-wasm:
 # Build WASM modules (standard method)
 wasm: setup-wasm
 	@echo "🌐 Building WASM modules..."
-	cd test-wasm && wasm-pack build --target web --out-dir pkg
-	cp test-wasm/pkg/test_wasm_bg.wasm web/test.wasm
+	cd test-wasm && ./build.sh
 	@if [ -d "wasm-decryptor-helper" ]; then \
 		echo "Building WASM decryption helper..."; \
 		cd wasm-decryptor-helper && ./build.sh; \

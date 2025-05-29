@@ -48,8 +48,8 @@ check_prerequisites() {
         missing_tools+=("cargo")
     fi
 
-    if ! command_exists "wasm-pack"; then
-        missing_tools+=("wasm-pack")
+    if ! command_exists "wasm-bindgen"; then
+        missing_tools+=("wasm-bindgen")
     fi
 
     if [ ${#missing_tools[@]} -ne 0 ]; then
@@ -60,8 +60,8 @@ check_prerequisites() {
                 "rustc"|"cargo")
                     echo "  - Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
                     ;;
-                "wasm-pack")
-                    echo "  - Install wasm-pack: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh"
+                "wasm-bindgen")
+                    echo "  - Install wasm-bindgen-cli: cargo install wasm-bindgen-cli"
                     ;;
             esac
         done
@@ -135,15 +135,20 @@ build_test_wasm() {
         print_warning "Method 2 failed or timed out"
     fi
 
-    # Method 3: wasm-pack build (may hang at wasm-bindgen step)
-    print_status "Attempting Method 3: wasm-pack build..."
-    if timeout 30 wasm-pack build --target web --out-dir pkg --dev 2>/dev/null; then
-        print_success "Method 3 succeeded"
-        copy_wasm_files
-        cd ..
-        return 0
+    # Method 3: wasm-bindgen build (using cargo + wasm-bindgen)
+    print_status "Attempting Method 3: wasm-bindgen build..."
+    if timeout 60 cargo build --target wasm32-unknown-unknown --release 2>/dev/null; then
+        mkdir -p pkg
+        if timeout 30 wasm-bindgen target/wasm32-unknown-unknown/release/test_wasm.wasm --out-dir pkg --target web --no-typescript 2>/dev/null; then
+            print_success "Method 3 succeeded"
+            copy_wasm_files
+            cd ..
+            return 0
+        else
+            print_warning "Method 3 wasm-bindgen step failed"
+        fi
     else
-        print_warning "Method 3 failed or timed out (wasm-pack issues)"
+        print_warning "Method 3 cargo build failed"
     fi
 
     # Method 4: Last resort - basic cargo build
@@ -205,15 +210,20 @@ build_wasm_helper() {
         return 0
     fi
 
-    # Fallback to direct wasm-pack build
-    print_status "Fallback: Direct wasm-pack build for helper..."
-    if timeout 60 wasm-pack build --target web --out-dir pkg --release 2>/dev/null; then
-        # Copy files manually
-        cp pkg/wasm_decryptor_helper.js ../web/wasm-decryptor-helper.js 2>/dev/null || true
-        cp pkg/wasm_decryptor_helper_bg.wasm ../web/wasm-decryptor-helper.wasm 2>/dev/null || true
-        print_success "WASM helper built successfully"
+    # Fallback to direct cargo + wasm-bindgen build
+    print_status "Fallback: Direct cargo + wasm-bindgen build for helper..."
+    if timeout 60 cargo build --target wasm32-unknown-unknown --release 2>/dev/null; then
+        mkdir -p pkg
+        if timeout 30 wasm-bindgen target/wasm32-unknown-unknown/release/wasm_decryptor_helper.wasm --out-dir pkg --target web --no-typescript 2>/dev/null; then
+            # Copy files manually
+            cp pkg/wasm_decryptor_helper.js ../web/wasm-decryptor-helper.js 2>/dev/null || true
+            cp pkg/wasm_decryptor_helper_bg.wasm ../web/wasm-decryptor-helper.wasm 2>/dev/null || true
+            print_success "WASM helper built successfully"
+        else
+            print_warning "WASM helper wasm-bindgen step failed, continuing without it..."
+        fi
     else
-        print_warning "WASM helper build failed, continuing without it..."
+        print_warning "WASM helper cargo build failed, continuing without it..."
     fi
 
     cd ..

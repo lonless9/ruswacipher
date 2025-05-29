@@ -35,9 +35,9 @@ print_error() {
 # Check prerequisites
 print_status "Checking prerequisites..."
 
-if ! command -v wasm-pack &> /dev/null; then
-    print_error "wasm-pack is required but not installed."
-    print_status "Install with: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh"
+if ! command -v wasm-bindgen &> /dev/null; then
+    print_error "wasm-bindgen-cli is required but not installed."
+    print_status "Install with: cargo install wasm-bindgen-cli"
     exit 1
 fi
 
@@ -62,8 +62,8 @@ if [ ! -f "Cargo.toml" ]; then
     exit 1
 fi
 
-wasm-pack build --target web --out-dir pkg
-cp pkg/test_wasm_bg.wasm ../web/test.wasm
+# Use the build script which now uses wasm-bindgen
+./build.sh
 
 cd ..
 print_success "Test WASM module built and copied to web/test.wasm"

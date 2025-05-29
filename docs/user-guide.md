@@ -13,6 +13,7 @@
 ### Prerequisites
 
 - Rust 1.70+ (for building from source)
+- wasm-bindgen-cli (for WASM module development): `cargo install wasm-bindgen-cli`
 - Node.js 16+ (for web runtime development)
 - Modern web browser with WebAssembly support
 
@@ -145,7 +146,7 @@ ruswacipher encrypt -i input.wasm -o output.wasm --key-hex 0123456789abcdef01234
     <script>
         async function loadEncryptedWasm() {
             const loader = new WasmGuardianLoader();
-            
+
             try {
                 const wasmInstance = await loader.loadEncryptedWasm(
                     'my-module.wasm.enc',  // Encrypted WASM file URL
@@ -153,16 +154,16 @@ ruswacipher encrypt -i input.wasm -o output.wasm --key-hex 0123456789abcdef01234
                     {},                    // WASM imports (optional)
                     'auto'                 // Algorithm detection (optional)
                 );
-                
+
                 // Use the WASM instance
                 const result = wasmInstance.exports.myFunction(42);
                 console.log('Result:', result);
-                
+
             } catch (error) {
                 console.error('Failed to load encrypted WASM:', error);
             }
         }
-        
+
         loadEncryptedWasm();
     </script>
 </body>

@@ -7,16 +7,25 @@ set -e
 
 echo "🔐 Building WASM Decryption Helper..."
 
-# Check if wasm-pack is installed
-if ! command -v wasm-pack &> /dev/null; then
-    echo "❌ wasm-pack is required but not installed."
-    echo "Install with: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh"
+# Check if wasm-bindgen is installed
+if ! command -v wasm-bindgen &> /dev/null; then
+    echo "❌ wasm-bindgen-cli is required but not installed."
+    echo "Install with: cargo install wasm-bindgen-cli"
     exit 1
 fi
 
 # Build the WASM module
 echo "📦 Building WASM module..."
-wasm-pack build --target web --out-dir pkg --release
+cargo build --target wasm32-unknown-unknown --release
+
+# Create output directory
+mkdir -p pkg
+
+# Generate bindings using wasm-bindgen
+wasm-bindgen target/wasm32-unknown-unknown/release/wasm_decryptor_helper.wasm \
+    --out-dir pkg \
+    --target web \
+    --no-typescript
 
 # Copy files to web directory
 echo "📁 Copying files to web directory..."
@@ -30,8 +39,8 @@ cat > ../web/wasm-decryptor-helper-wrapper.js << 'EOF'
  * Provides a simplified interface for loading and using the WASM decryption helper
  */
 
-import init, { 
-    decrypt_chacha20poly1305, 
+import init, {
+    decrypt_chacha20poly1305,
     encrypt_chacha20poly1305,
     get_helper_info,
     test_helper
@@ -47,7 +56,7 @@ export async function initWasmHelper() {
         await init();
         isInitialized = true;
         console.log('🔐 WASM Decryption Helper loaded successfully');
-        
+
         // Run self-test
         const testResult = test_helper();
         if (!testResult) {
@@ -63,7 +72,7 @@ export async function decryptChaCha20Poly1305(key, nonce, ciphertext) {
     if (!isInitialized) {
         await initWasmHelper();
     }
-    
+
     return decrypt_chacha20poly1305(key, nonce, ciphertext);
 }
 
@@ -74,7 +83,7 @@ export async function encryptChaCha20Poly1305(key, nonce, plaintext) {
     if (!isInitialized) {
         await initWasmHelper();
     }
-    
+
     return encrypt_chacha20poly1305(key, nonce, plaintext);
 }
 
@@ -85,7 +94,7 @@ export async function getHelperInfo() {
     if (!isInitialized) {
         await initWasmHelper();
     }
-    
+
     return JSON.parse(get_helper_info());
 }
 

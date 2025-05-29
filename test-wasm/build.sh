@@ -7,8 +7,24 @@ set -e
 
 echo "🦀 Building test WASM module..."
 
-# Build the WASM module
-wasm-pack build --target web --out-dir pkg
+# Check if wasm-bindgen is installed
+if ! command -v wasm-bindgen &> /dev/null; then
+    echo "❌ wasm-bindgen-cli is required but not installed."
+    echo "Install with: cargo install wasm-bindgen-cli"
+    exit 1
+fi
+
+# Build the WASM module using cargo
+cargo build --target wasm32-unknown-unknown --release
+
+# Create output directory
+mkdir -p pkg
+
+# Generate bindings using wasm-bindgen
+wasm-bindgen target/wasm32-unknown-unknown/release/test_wasm.wasm \
+    --out-dir pkg \
+    --target web \
+    --no-typescript
 
 # Copy the generated WASM file to the web directory
 cp pkg/test_wasm_bg.wasm ../web/test.wasm

@@ -1,0 +1,12 @@
+{
+    "aes-gcm": {
+        "encryptedFile": "test.wasm.enc",
+        "key": "91e42c6f6b7d16f27b11bb35e2624158bfe108305206d9523b148a6c770c967c",
+        "algorithm": "aes-gcm"
+    },
+    "chacha20poly1305": {
+        "encryptedFile": "test-chacha.wasm.enc",
+        "key": "cd6126fb907b4de90c38c3c156c2288a6323c63884b4e7c0fcadea5f91de4d44",
+        "algorithm": "chacha20poly1305"
+    }
+}
